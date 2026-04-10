@@ -22,16 +22,26 @@ import { t } from '@shared/i18n/translator';
  */
 function getReviewTypes(): { id: number; label: string; title: string }[] {
   return [
-    { id: 1, label: t('review.type.sentence_to_translation.label'),
-      title: t('review.type.sentence_to_translation.title') },
-    { id: 2, label: t('review.type.sentence_to_term.label'),
-      title: t('review.type.sentence_to_term.title') },
-    { id: 3, label: t('review.type.sentence_to_both.label'),
-      title: t('review.type.sentence_to_both.title') },
-    { id: 4, label: t('review.type.term_to_translation.label'),
-      title: t('review.type.term_to_translation.title') },
-    { id: 5, label: t('review.type.translation_to_term.label'),
-      title: t('review.type.translation_to_term.title') },
+    {
+      id: 1, label: t('review.type.sentence_to_translation.label'),
+      title: t('review.type.sentence_to_translation.title')
+    },
+    {
+      id: 2, label: t('review.type.sentence_to_term.label'),
+      title: t('review.type.sentence_to_term.title')
+    },
+    {
+      id: 3, label: t('review.type.sentence_to_both.label'),
+      title: t('review.type.sentence_to_both.title')
+    },
+    {
+      id: 4, label: t('review.type.term_to_translation.label'),
+      title: t('review.type.term_to_translation.title')
+    },
+    {
+      id: 5, label: t('review.type.translation_to_term.label'),
+      title: t('review.type.translation_to_term.title')
+    },
   ];
 }
 
@@ -910,10 +920,9 @@ function registerTableReviewComponent(): void {
 // Auto-initialize after Alpine has initialized the DOM
 // We use onDomReady + check because initReviewApp() needs to inject HTML and then call Alpine.initTree()
 onDomReady(() => {
-  // Only init if Alpine is available and we're on the review page
   const container = document.getElementById('review-app');
   const configEl = document.getElementById('review-config');
-  if (container && configEl && window.Alpine) {
+  if (container && configEl) {
     initReviewApp();
   }
 });
