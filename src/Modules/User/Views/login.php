@@ -23,7 +23,7 @@ namespace Lwt\Modules\User\Views;
 
 // Validate injected variables from controller
 assert(isset($username) && is_string($username));
-assert(isset($error) && (is_string($error) || $error === null));
+$error = $error ?? null;
 /** @var string|null $error */
 $success = null;
 

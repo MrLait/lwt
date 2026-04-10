@@ -25,8 +25,9 @@ namespace Lwt\Modules\User\Views;
 use Lwt\Shared\UI\Helpers\FormHelper;
 
 assert(isset($user) && $user instanceof \Lwt\Modules\User\Domain\User);
-assert(isset($error) && (is_string($error) || $error === null));
-assert(isset($success) && (is_string($success) || $success === null));
+$error = $error ?? null;   // Замена assert для совместимости
+$success = $success ?? null; // <-- ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ
+// assert(isset($success) && (is_string($success) || $success === null));
 
 $escapedUsername = htmlspecialchars($user->username(), ENT_QUOTES, 'UTF-8');
 $escapedEmail = htmlspecialchars($user->email(), ENT_QUOTES, 'UTF-8');

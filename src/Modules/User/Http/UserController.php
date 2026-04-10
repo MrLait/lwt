@@ -97,16 +97,22 @@ class UserController extends BaseController
      */
     public function loginForm(): mixed
     {
-        // If already authenticated, redirect to home
+        // Если уже авторизован — на главную
         if (Globals::isAuthenticated()) {
             return $this->redirect('/');
         }
 
-        // Get flash error messages
+        // === ИСПРАВЛЕНИЕ: Объявляем переменную здесь ===
+        $error = null; 
+        $username = ''; // Заодно объявим и username, чтобы не было ворнингов во View
+        
+        // Получаем flash-ошибки (если есть)
         $errorMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_ERROR);
-        $error = !empty($errorMessages) ? $errorMessages[0]['message'] : null;
+        if (!empty($errorMessages)) {
+            $error = $errorMessages[0]['message'];
+        }
 
-        // Get persisted form data
+        // Получаем сохраненный username (если был ввод)
         $username = $this->formData->getAndClearUsername();
 
         $this->render(__('user.login.page_title'), false);
@@ -312,11 +318,19 @@ class UserController extends BaseController
             return null;
         }
 
+        // === ИСПРАВЛЕНИЕ: Явно инициализируем переменные здесь ===
+        $error = null;
+        $success = null;
+
         $errorMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_ERROR);
-        $error = !empty($errorMessages) ? $errorMessages[0]['message'] : null;
+        if (!empty($errorMessages)) {
+            $error = $errorMessages[0]['message'];
+        }
 
         $successMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_SUCCESS);
-        $success = !empty($successMessages) ? $successMessages[0]['message'] : null;
+        if (!empty($successMessages)) {
+            $success = $successMessages[0]['message'];
+        }
 
         $this->render(__('user.profile.page_title'), true);
         require __DIR__ . '/../Views/profile.php';
@@ -427,11 +441,20 @@ class UserController extends BaseController
      */
     public function preferencesForm(array $params = []): void
     {
-        $errorMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_ERROR);
-        $error = !empty($errorMessages) ? $errorMessages[0]['message'] : null;
+    // === ИСПРАВЛЕНИЕ ===
+    $error = null;
+    $success = null;
 
-        $successMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_SUCCESS);
-        $success = !empty($successMessages) ? $successMessages[0]['message'] : null;
+    $errorMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_ERROR);
+    if (!empty($errorMessages)) {
+        $error = $errorMessages[0]['message'];
+    }
+
+    $successMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_SUCCESS);
+    if (!empty($successMessages)) {
+        $success = $successMessages[0]['message'];
+    }
+    // === КОНЕЦ ИСПРАВЛЕНИЯ ===
 
         $settings = $this->userFacade->getUserPreferences();
 
@@ -561,12 +584,20 @@ class UserController extends BaseController
             $this->redirect('/');
         }
 
+        // === ИСПРАВЛЕНИЕ: Явно инициализируем переменные ===
+        $error = null;
+        $success = null;
+
         // Get flash messages
         $errorMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_ERROR);
-        $error = !empty($errorMessages) ? $errorMessages[0]['message'] : null;
+        if (!empty($errorMessages)) {
+            $error = $errorMessages[0]['message'];
+        }
 
         $successMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_SUCCESS);
-        $success = !empty($successMessages) ? $successMessages[0]['message'] : null;
+        if (!empty($successMessages)) {
+            $success = $successMessages[0]['message'];
+        }
 
         // Get persisted form data
         $email = $this->formData->getAndClearPasswordEmail();
@@ -630,9 +661,14 @@ class UserController extends BaseController
             $this->redirect('/password/forgot');
         }
 
+        // === ИСПРАВЛЕНИЕ: Явно инициализируем переменную ===
+        $error = null;
+
         // Get flash error messages
         $errorMessages = $this->flash->getByTypeAndClear(FlashMessageService::TYPE_ERROR);
-        $error = !empty($errorMessages) ? $errorMessages[0]['message'] : null;
+        if (!empty($errorMessages)) {
+            $error = $errorMessages[0]['message'];
+        }
 
         $this->render(__('user.reset.page_title'), false);
         require __DIR__ . '/../Views/reset_password.php';
