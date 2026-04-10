@@ -196,13 +196,13 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       correct: 0
     },
 
-    // Timer
-    timer: {
+    // Timer - ВАЖНО: делаем его реактивным через Alpine.reactive
+    timer: Alpine.reactive({
       startTime: 0,
       serverTime: 0,
       elapsed: '00:00',
       intervalId: null
-    },
+    }) as ReviewTimer,
 
     // UI state
     isLoading: false,
@@ -240,7 +240,10 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       }
 
       this.isInitialized = true;
+
+      // ВАЖНО: Запускаем таймер с привязкой к DOM
       this.startTimer();
+
     },
 
     /**
@@ -290,9 +293,9 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
               ? parseInt(data.term_id, 10)
               : data.term_id,
             text: data.term_text,
-            translation: '', // Will be revealed with answer
+            translation: '',
             romanization: '',
-            status: 1,
+            status: 1, // По умолчанию статус 1 (Learning)
             sentence: '',
             solution: data.solution || '',
             group: data.group
@@ -324,6 +327,7 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       if (!this.currentWord || this.isLoading) return;
 
       this.isLoading = true;
+      this.error = null;
 
       try {
         const response = await ReviewApi.updateStatus(
@@ -337,23 +341,45 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
           return;
         }
 
-        // Update progress
-        this.progress.remaining--;
+        // Обновляем прогресс (реактивно)
+        if (this.progress.remaining > 0) {
+          this.progress.remaining--;
+        }
+
         if (isCorrect) {
           this.progress.correct++;
         } else {
           this.progress.wrong++;
         }
 
-        // Play feedback sound
+        // Воспроизводим звук
         this.playSound(isCorrect);
 
-        // Reset loading state before fetching next word
-        // (nextWord() checks isLoading and returns early if true)
+        // Проверяем, завершена ли сессия
+        if (this.progress.remaining === 0) {
+          this.isFinished = true;
+          this.stopTimer();
+
+          // Загружаем количество слов на завтра
+          const tomorrowResponse = await ReviewApi.getTomorrowCount(
+            this.reviewKey,
+            this.selection
+          );
+          if (tomorrowResponse.data?.count) {
+            this.tomorrowCount = tomorrowResponse.data.count;
+          }
+
+          this.currentWord = null;
+          this.isLoading = false;
+          return;
+        }
+
+        // Сбрасываем флаг загрузки
         this.isLoading = false;
 
-        // Fetch next word
+        // Загружаем следующее слово
         await this.nextWord();
+
       } catch (err) {
         console.error('Error updating status:', err);
         this.error = 'Failed to update status';
@@ -401,13 +427,15 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
         const now = Math.floor(Date.now() / 1000);
         const clientOffset = now - this.timer.serverTime;
         const elapsed = now - this.timer.startTime - clientOffset;
+
+        // Обновляем свойство - Alpine.effect отреагирует на это изменение
         this.timer.elapsed = this.formatElapsed(Math.max(0, elapsed));
       };
 
-      // Update immediately
+      // Первое обновление сразу
       updateTimer();
 
-      // Then update every second
+      // Запускаем интервал
       this.timer.intervalId = window.setInterval(updateTimer, 1000);
     },
 

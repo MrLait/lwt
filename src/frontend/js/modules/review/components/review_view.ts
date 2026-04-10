@@ -248,13 +248,13 @@ function buildWordReviewArea(): string {
         <!-- After answer revealed -->
         <div x-show="store.answerRevealed" class="mb-5">
           <div class="buttons is-centered">
-            <button class="button is-danger" @click="decrementStatus" title="Arrow Down">
+            <button class="button is-danger" @click.prevent="decrementStatus" title="Arrow Down">
               ${escapeHtml(t('review.card.wrong'))}
             </button>
-            <button class="button is-success" @click="incrementStatus" title="Arrow Up">
+            <button class="button is-success" @click.prevent="incrementStatus" title="Arrow Up">
               ${escapeHtml(t('review.card.correct'))}
             </button>
-            <button class="button" @click="skipWord" title="Escape">
+            <button class="button" @click.prevent="skipWord" title="Escape">
               ${escapeHtml(t('review.card.skip'))}
             </button>
           </div>
@@ -658,7 +658,7 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       this.store.configure(config);
 
       // Set up keyboard handler
-      document.addEventListener('keydown', (e) => this.handleKeydown(e));
+      window.addEventListener('keydown', (e) => this.handleKeydown(e), { capture: true });
 
       // Start fetching first word if not table mode
       if (!config.isTableMode) {
@@ -717,45 +717,100 @@ function registerReviewAppComponent(config: ReviewConfig): void {
     },
 
     handleKeydown(e: KeyboardEvent) {
+      // Игнорируем, если модальное окно открыто
       if (this.store.isModalOpen) return;
+
+      // Игнорируем, если фокус на поле ввода
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // Игнорируем, если табличный режим или тест завершен
       if (this.store.isTableMode || this.store.isFinished) return;
 
-      switch (e.key) {
-        case ' ':
-          e.preventDefault();
-          if (!this.store.answerRevealed) this.revealAnswer();
-          break;
-        case 'Escape':
-          e.preventDefault();
-          if (this.store.currentWord) this.skipWord();
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          if (this.store.answerRevealed) this.incrementStatus();
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          if (this.store.answerRevealed) this.decrementStatus();
-          break;
-        case 'i': case 'I':
-          e.preventDefault();
-          if (this.store.currentWord) this.setStatus(98);
-          break;
-        case 'w': case 'W':
-          e.preventDefault();
-          if (this.store.currentWord) this.setStatus(99);
-          break;
-        case 'e': case 'E':
-          e.preventDefault();
-          if (this.store.currentWord) this.store.openModal();
-          break;
-        case '1': case '2': case '3': case '4': case '5':
-          e.preventDefault();
-          if (this.store.answerRevealed) this.setStatus(parseInt(e.key, 10));
-          break;
-      }
-    },
+      // ВАЖНО: Предотвращаем стандартное поведение ДО обработки клавиши
+      const key = e.key;
+      const code = e.code;
+
+      // Список всех клавиш, которые мы обрабатываем
+      const handledKeys = [
+        ' ', 'Space', 'Escape', 'ArrowUp', 'ArrowDown',
+        'i', 'I', 'w', 'W', 'e', 'E', '1', '2', '3', '4', '5'
+      ];
+      // Проверяем, нужно ли обрабатывать эту клавишу
+      const shouldHandle = handledKeys.includes(key) ||
+        handledKeys.includes(code) ||
+        (key >= '1' && key <= '5');
+      if (!shouldHandle) return;
+
+      // ВСЕГДА предотвращаем стандартное поведение для обрабатываемых клавиш
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation(); // Дополнительная защита
+
+      setTimeout(() => {
+        // Теперь обрабатываем клавишу
+        switch (key) {
+          case ' ':
+          case 'Space':
+            if (!this.store.answerRevealed) {
+              this.revealAnswer();
+            }
+            break;
+
+          case 'Escape':
+            if (this.store.currentWord) {
+              this.skipWord();
+            }
+            break;
+
+          case 'ArrowUp':
+            if (this.store.answerRevealed) {
+              this.incrementStatus();
+            }
+            break;
+
+          case 'ArrowDown':
+            if (this.store.answerRevealed) {
+              this.decrementStatus();
+            }
+            break;
+
+          case 'i':
+          case 'I':
+            if (this.store.currentWord) {
+              this.setStatus(98);
+            }
+            break;
+
+          case 'w':
+          case 'W':
+            if (this.store.currentWord) {
+              this.setStatus(99);
+            }
+            break;
+
+          case 'e':
+          case 'E':
+            if (this.store.currentWord) {
+              this.store.openModal();
+            }
+            break;
+
+          case '1':
+          case '2':
+          case '3':
+          case '4':
+          case '5':
+            if (this.store.answerRevealed) {
+              this.setStatus(parseInt(key, 10));
+            }
+            break;
+
+          default:
+            // Для необрабатываемых клавиш не вызываем preventDefault
+            return;
+        }
+      }, 10);
+    }, // Небольшая задержка 10ms,
 
     // Finished state helpers (CSP-compatible)
     getFinishedTitle(): string {
