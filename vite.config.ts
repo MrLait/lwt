@@ -176,7 +176,7 @@ export default defineConfig({
       '@modules': resolve(__dirname, 'src/frontend/js/modules'),
       '@css': resolve(__dirname, 'src/frontend/css'),
       // Use CSP-compliant Alpine.js build (no unsafe-eval needed)
-      'alpinejs': '@alpinejs/csp',
+      //'alpinejs': '@alpinejs/csp',
     }
   }
 });

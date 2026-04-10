@@ -47,26 +47,53 @@ class RestoreFromUpload
      *
      * @return array{success: bool, error: ?string}
      */
-    public function execute(?array $fileData): array
-    {
-        // Check if restore is enabled
-        if (!Globals::isBackupRestoreEnabled()) {
+public function execute(?array $fileData): array
+{
+    if (!Globals::isBackupRestoreEnabled()) {
+        return [
+            'success' => false,
+            'error' => 'Database restore is disabled. Set BACKUP_RESTORE_ENABLED=true in .env to enable.'
+        ];
+    }
+
+    if ($fileData === null || empty($fileData['tmp_name'])) {
+        return [
+            'success' => false,
+            'error' => 'No restore file specified'
+        ];
+    }
+
+    $originalName = (string)($fileData['name'] ?? '');
+    $tmpName = (string)$fileData['tmp_name'];
+
+    try {
+        $path = str_ends_with(strtolower($originalName), '.gz')
+            ? 'compress.zlib://' . $tmpName
+            : $tmpName;
+
+        $handle = @fopen($path, 'r');
+        if ($handle === false) {
             return [
                 'success' => false,
-                'error' => "Database restore is disabled. Set BACKUP_RESTORE_ENABLED=true in .env to enable."
+                'error' => 'Restore file could not be opened'
             ];
         }
 
-        if ($fileData === null) {
-            return ['success' => false, 'error' => "No Restore file specified"];
-        }
+        $message = $this->repository->restoreFromHandle(
+            $handle,
+            $originalName !== '' ? $originalName : 'Database'
+        );
 
-        $handle = @gzopen($fileData["tmp_name"], "r");
-        if ($handle === false) {
-            return ['success' => false, 'error' => "Restore file could not be opened"];
-        }
+        $success = str_starts_with($message, 'Success:');
 
-        $this->repository->restoreFromHandle($handle, "Database");
-        return ['success' => true, 'error' => null];
+        return [
+            'success' => $success,
+            'error' => $success ? null : $message,
+        ];
+    } catch (\Throwable $e) {
+        return [
+            'success' => false,
+            'error' => 'Restore failed: ' . $e->getMessage(),
+        ];
     }
-}
+}}

@@ -76,7 +76,9 @@ export function insertNewWord(wordId: number, solution: string, group: string): 
   setReviewSolution(solution);
   setCurrentWordId(wordId);
 
-  const termReviewEl = document.getElementById('term-review');
+  const termReviewEl =
+    document.getElementById('term-review') ||
+    document.getElementById('review-app');
   if (termReviewEl) {
     termReviewEl.innerHTML = group;
   }
@@ -86,6 +88,8 @@ export function insertNewWord(wordId: number, solution: string, group: string): 
     el.addEventListener('click', handleReviewWordClick);
   });
 }
+
+
 
 /**
  * Display the review finished message.
@@ -157,6 +161,7 @@ export async function reviewQueryHandler(
  * @param reviewData Review session data
  */
 export async function queryNextTerm(reviewData: ReviewData): Promise<void> {
+  console.log('[review] queryNextTerm()', reviewData);
   const response = await ReviewApi.getNextWord({
     reviewKey: reviewData.review_key,
     selection: reviewData.selection,
@@ -165,7 +170,7 @@ export async function queryNextTerm(reviewData: ReviewData): Promise<void> {
     wordRegex: reviewData.word_regex,
     type: reviewData.type
   });
-
+  console.log('[review] getNextWord response:', response);
   if (response.data) {
     const data: CurrentReview = {
       term_id: typeof response.data.term_id === 'string'
@@ -372,7 +377,50 @@ export function initReviewInteractionGlobals(config: {
  * Auto-initialize review views from JSON config elements.
  */
 export function autoInitReviewViews(): void {
-  // Status change result
+  console.log('[review] autoInitReviewViews() called');
+  // New unified review config emitted by PHP
+  const reviewConfigEl = document.getElementById('review-config') as HTMLScriptElement | null;
+  console.log('[review] reviewConfigEl:', reviewConfigEl);
+  if (reviewConfigEl) {
+    try {
+      const config = JSON.parse(reviewConfigEl.textContent || '{}');
+      console.log('[review] parsed config:', config);
+      // Initialize language / dictionary config
+      if (config.langSettings) {
+        initReviewInteractionGlobals({
+          langId: config.langId,
+          dict1Uri: config.langSettings.dict1Uri || '',
+          dict2Uri: config.langSettings.dict2Uri || '',
+          translateUri: config.langSettings.translateUri || '',
+          langCode: config.langSettings.langCode || ''
+        });
+      }
+
+      // Initialize AJAX review
+      initAjaxReview(
+        {
+          review_key: config.reviewKey || '',
+          selection: config.selection || '',
+          word_mode: config.wordMode ? 1 : 0,
+          language_id: config.langId || 0,
+          word_regex: config.wordRegex || '',
+          type: config.reviewType || 1,
+          count: config.progress?.total || 0,
+          total_reviews: config.progress?.total || 0
+        },
+        {
+          wait_time: 0,
+          time: config.timer?.serverTime || Math.floor(Date.now() / 1000),
+          start_time: config.timer?.startTime || Math.floor(Date.now() / 1000),
+          show_timer: 1
+        }
+      );
+    } catch (e) {
+      console.error('Failed to parse review-config:', e);
+    }
+  }
+
+  // Backward-compatible legacy config blocks (if they ever exist)
   const statusChangeConfigEl = document.querySelector<HTMLScriptElement>(
     'script[data-lwt-status-change-result-config]'
   );
@@ -392,7 +440,6 @@ export function autoInitReviewViews(): void {
     }
   }
 
-  // Review interaction globals
   const reviewGlobalsConfigEl = document.querySelector<HTMLScriptElement>(
     'script[data-lwt-review-interaction-globals-config]'
   );
@@ -405,7 +452,6 @@ export function autoInitReviewViews(): void {
     }
   }
 
-  // AJAX review initialization
   const ajaxReviewConfigEl = document.querySelector<HTMLScriptElement>(
     'script[data-lwt-ajax-review-config]'
   );

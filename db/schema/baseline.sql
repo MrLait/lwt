@@ -112,9 +112,9 @@ CREATE TABLE IF NOT EXISTS word_occurrences (
 ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE IF NOT EXISTS temp_word_occurrences (
-    TiCount smallint(5) unsigned NOT NULL,
+    TiCount INT UNSIGNED NOT NULL,
     TiSeID mediumint(8) unsigned NOT NULL,
-    TiOrder smallint(5) unsigned NOT NULL,
+    TiOrder INT UNSIGNED NOT NULL,
     TiWordCount tinyint(3) unsigned NOT NULL,
     TiText varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

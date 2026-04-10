@@ -18,7 +18,7 @@ export type {}; // Make this a module to avoid global scope issues
 const sw = self;
 
 // Cache version - increment to invalidate old caches
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `lwt-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `lwt-runtime-${CACHE_VERSION}`;
 
@@ -34,9 +34,9 @@ const APP_SHELL: string[] = [
 
 // URL patterns that should use network-first strategy
 const NETWORK_FIRST_PATTERNS: RegExp[] = [
-  /\/api\//,           // All API requests
-  /\/text\/read/,      // Reading interface (needs fresh data)
-  /\/review\//,        // Review pages
+  /\/api\//,                 // All API requests
+  /\/text\/read(?:\/|\?|$)/, // Reading interface
+  /\/review(?:\/|\?|$)/,     // Review pages
 ];
 
 // URL patterns to never cache
@@ -57,6 +57,14 @@ function shouldNetworkFirst(url: string): boolean {
  */
 function shouldNeverCache(url: string): boolean {
   return NEVER_CACHE_PATTERNS.some(pattern => pattern.test(url));
+}
+
+function shouldCacheResponse(request: Request, response: Response | null): boolean {
+  return !!response
+    && response.ok
+    && response.status === 200
+    && request.method === 'GET'
+    && !request.headers.has('range');
 }
 
 /**
@@ -135,6 +143,12 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
+  // Never cache partial content / range requests
+  if (request.headers.has('range')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // Never cache certain URLs
   if (shouldNeverCache(url)) {
     event.respondWith(fetch(request));
@@ -170,10 +184,10 @@ async function cacheFirst(request: Request, cacheName: string): Promise<Response
   try {
     const networkResponse = await fetch(request);
     // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
-    }
+if (shouldCacheResponse(request, networkResponse)) {
+  const cache = await caches.open(cacheName);
+  await cache.put(request, networkResponse.clone());
+}
     return networkResponse;
   } catch (error) {
     // Return offline page for navigation requests
@@ -195,10 +209,10 @@ async function networkFirst(request: Request): Promise<Response> {
   try {
     const networkResponse = await fetch(request);
     // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
+if (shouldCacheResponse(request, networkResponse)) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  await cache.put(request, networkResponse.clone());
+}
     return networkResponse;
   } catch (error) {
     // Try cache on network failure
@@ -228,20 +242,20 @@ async function staleWhileRevalidate(request: Request): Promise<Response> {
   const cachedResponse = await cache.match(request);
 
   // Fetch from network in background
-  const fetchPromise = fetch(request)
-    .then(networkResponse => {
-      if (networkResponse.ok) {
-        cache.put(request, networkResponse.clone());
-      }
-      return networkResponse;
-    })
-    .catch(async () => {
-      // On network error, return offline page for navigation
-      if (request.mode === 'navigate') {
-        return caches.match('/offline.html');
-      }
-      return null;
-    });
+const fetchPromise = fetch(request)
+  .then(async networkResponse => {
+    if (shouldCacheResponse(request, networkResponse)) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  })
+  .catch(async () => {
+    // On network error, return offline page for navigation
+    if (request.mode === 'navigate') {
+      return caches.match('/offline.html');
+    }
+    return null;
+  });
 
   // Return cached response immediately, or wait for network
   if (cachedResponse) {

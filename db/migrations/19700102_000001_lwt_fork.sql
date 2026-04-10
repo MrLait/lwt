@@ -58,7 +58,7 @@ ALTER TABLE texttags
 
 -- temptextitems modifications (idempotent)
 ALTER TABLE temptextitems
-    ADD COLUMN IF NOT EXISTS TiCount smallint(5) unsigned NOT NULL,
+    ADD COLUMN IF NOT EXISTS TiCount INT UNSIGNED NOT NULL,
     DROP COLUMN IF EXISTS TiLgID,
     DROP COLUMN IF EXISTS TiTxID;
 

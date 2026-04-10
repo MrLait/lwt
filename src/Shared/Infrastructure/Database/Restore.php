@@ -40,38 +40,38 @@ class Restore
      *
      * @return void
      */
-    private static function dropAllLwtTables(): void
-    {
-        $dbname = Globals::getDatabaseName();
+private static function dropAllLwtTables(): void
+{
+    $dbname = Globals::getDatabaseName();
 
-        // First drop all foreign keys to avoid dependency issues
-        Migrations::dropAllForeignKeys();
+    // First drop all foreign keys to avoid dependency issues
+    Migrations::dropAllForeignKeys();
 
-        // Get all tables in the database
-        $tables = Connection::preparedFetchAll(
-            "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
-             WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'",
-            [$dbname]
-        );
+    // Get all tables in the database
+    $tables = Connection::preparedFetchAll(
+        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'",
+        [$dbname]
+    );
 
-        // Disable FK checks while dropping
-        Connection::execute("SET FOREIGN_KEY_CHECKS = 0");
-        try {
-            foreach ($tables as $table) {
-                if (!isset($table['TABLE_NAME']) || !is_string($table['TABLE_NAME'])) {
-                    continue;
-                }
-                $escapedTable = '`' . str_replace('`', '``', $table['TABLE_NAME']) . '`';
-                try {
-                    Connection::execute("DROP TABLE IF EXISTS $escapedTable");
-                } catch (\RuntimeException $e) {
-                    // Ignore errors, table might already be gone
-                }
+    // Disable FK checks while dropping
+    Connection::execute("SET FOREIGN_KEY_CHECKS = 0");
+    try {
+        foreach ($tables as $table) {
+            if (!isset($table['TABLE_NAME']) || !is_string($table['TABLE_NAME'])) {
+                continue;
             }
-        } finally {
-            Connection::execute("SET FOREIGN_KEY_CHECKS = 1");
+            $escapedTable = '`' . str_replace('`', '``', $table['TABLE_NAME']) . '`';
+            try {
+                Connection::execute("DROP TABLE IF EXISTS $escapedTable");
+            } catch (\RuntimeException $e) {
+                // Ignore errors, table might already be gone
+            }
         }
+    } finally {
+        Connection::execute("SET FOREIGN_KEY_CHECKS = 1");
     }
+}
 
     /**
      * Restore the database from a file.
@@ -88,174 +88,183 @@ class Restore
      * @since 2.9.1-fork It can read SQL with more or less than one instruction a line
      * @since 3.0.0 Added SQL validation for security hardening
      */
-    public static function restoreFile($handle, string $title, bool $validateSql = true): string
-    {
-        $message = "";
-        $hasErrors = false;
-        $install_status = [
-            "queries" => 0,
-            "successes" => 0,
-            "errors" => 0,
-            "drops" => 0,
-            "inserts" => 0,
-            "creates" => 0
-        ];
-        $start = true;
-        $curr_content = '';
-        $queries_list = [];
+public static function restoreFile($handle, string $title, bool $validateSql = true): string
+{
+    $message = '';
+    $hasErrors = false;
+    $install_status = [
+        'queries' => 0,
+        'successes' => 0,
+        'errors' => 0,
+        'drops' => 0,
+        'inserts' => 0,
+        'creates' => 0,
+    ];
 
-        while ($stream = fgets($handle)) {
-            // Check file header
-            if ($start) {
-                if (
-                    !str_starts_with($stream, "-- lwt-backup-")
-                    && !str_starts_with($stream, "-- lwt-exp_version-backup-")
-                ) {
-                    $message = "Error: Invalid $title Restore file " .
-                    "(possibly not created by LWT backup)";
-                    $install_status["errors"] = 1;
+    $start = true;
+    $curr_content = '';
+    $queries_list = [];
+
+    while (($stream = fgets($handle)) !== false) {
+        // Check file header
+        if ($start) {
+            if (
+                !str_starts_with($stream, '-- lwt-backup-') &&
+                !str_starts_with($stream, '-- lwt-exp_version-backup-')
+            ) {
+                $message = "Error: Invalid $title Restore file (possibly not created by LWT backup)";
+                $install_status['errors'] = 1;
+                $hasErrors = true;
+                break;
+            }
+            $start = false;
+            continue;
+        }
+
+        // Skip comments (lines starting with "-- " or lines that are just "--")
+        $trimmedLine = trim($stream);
+        if (str_starts_with($stream, '-- ') || $trimmedLine === '--') {
+            continue;
+        }
+
+        // Add stream to accumulator
+        $curr_content .= $stream;
+
+        // Normalize line endings so parsing works on Windows/Linux
+        $normalizedContent = str_replace("\r\n", "\n", $curr_content);
+
+        // Split by statement separator
+        $queries = preg_split("/;\n/", $normalizedContent);
+        if ($queries === false) {
+            $queries = [$normalizedContent];
+        }
+
+        // Keep the last incomplete fragment for the next iteration
+        $curr_content = array_pop($queries) ?? '';
+
+        foreach ($queries as $query) {
+            $query = trim($query);
+            if ($query !== '') {
+                $queries_list[] = $query;
+            }
+        }
+    }
+
+    // Add final query if there's any remaining content
+    if (!empty(trim($curr_content))) {
+        $queries_list[] = trim($curr_content);
+    }
+
+    if (!feof($handle) && !$hasErrors) {
+        $message = 'Error: cannot read the end of the demo file!';
+        $install_status['errors'] = 1;
+        $hasErrors = true;
+    }
+
+    fclose($handle);
+
+    // Validate all queries before executing any (security hardening)
+    if ($validateSql && !$hasErrors) {
+        $validator = new SqlValidator();
+        foreach ($queries_list as $query) {
+            $trimmedQuery = trim($query);
+            if ($trimmedQuery !== '' && !str_starts_with($trimmedQuery, '-- ')) {
+                if (!$validator->validate($trimmedQuery)) {
+                    $message = 'Security Error: ' . ($validator->getFirstError() ?? 'Invalid SQL detected');
+                    $install_status['errors'] = 1;
                     $hasErrors = true;
                     break;
                 }
-                $start = false;
-                continue;
-            }
-            // Skip comments (lines starting with "-- " or lines that are just "--")
-            $trimmedLine = trim($stream);
-            if (str_starts_with($stream, '-- ') || $trimmedLine === '--') {
-                continue;
-            }
-            // Add stream to accumulator
-            $curr_content .= $stream;
-            // Get queries
-            $queries = explode(';' . PHP_EOL, $curr_content);
-            // Replace line by remainders of the last element (incomplete line)
-            $curr_content = array_pop($queries);
-
-            foreach ($queries as $query) {
-                $queries_list[] = trim($query);
             }
         }
+    }
 
-        if (!feof($handle) && !$hasErrors) {
-            $message = "Error: cannot read the end of the demo file!";
-            $install_status["errors"] = 1;
-            $hasErrors = true;
-        }
-        fclose($handle);
+    // Drop all existing tables first to ensure a clean slate
+    if (!$hasErrors) {
+        self::dropAllLwtTables();
+    }
 
-        // Validate all queries before executing any (security hardening)
-        if ($validateSql && !$hasErrors) {
-            $validator = new SqlValidator();
-            foreach ($queries_list as $query) {
-                $trimmedQuery = trim($query);
-                if ($trimmedQuery !== '' && !str_starts_with($trimmedQuery, '-- ')) {
-                    if (!$validator->validate($trimmedQuery)) {
-                        $message = "Security Error: " . ($validator->getFirstError() ?? "Invalid SQL detected");
-                        $install_status["errors"] = 1;
+    // Now run all queries
+    $connection = Globals::getDbConnection();
+    if (!$hasErrors && $connection !== null) {
+        foreach ($queries_list as $query) {
+            $sql_line = trim(str_replace("\r", '', str_replace("\n", '', $query)));
+            if ($sql_line !== '') {
+                if (!str_starts_with($query, '-- ')) {
+                    $res = mysqli_query($connection, $query);
+                    $install_status['queries']++;
+
+                    if ($res == false) {
+                        $install_status['errors']++;
                         $hasErrors = true;
-                        break;
-                    }
-                }
-            }
-        }
+                    } else {
+                        $install_status['successes']++;
 
-        // Drop all existing tables first to ensure a clean slate
-        // This prevents issues with partial state from previous attempts
-        if (!$hasErrors) {
-            self::dropAllLwtTables();
-        }
-
-        // Now run all queries
-        $connection = Globals::getDbConnection();
-        if (!$hasErrors && $connection !== null) {
-            foreach ($queries_list as $query) {
-                $sql_line = trim(
-                    str_replace("\r", "", str_replace("\n", "", $query))
-                );
-                if ($sql_line != "") {
-                    if (!str_starts_with($query, '-- ')) {
-                        $res = mysqli_query(
-                            $connection,
-                            $query
-                        );
-                        $install_status["queries"]++;
-                        if ($res == false) {
-                            $install_status["errors"]++;
-                            $hasErrors = true;
-                        } else {
-                            $install_status["successes"]++;
-                            if (str_starts_with($query, "INSERT INTO")) {
-                                $install_status["inserts"]++;
-                            } elseif (str_starts_with($query, "DROP TABLE")) {
-                                $install_status["drops"]++;
-                            } elseif (str_starts_with($query, "CREATE TABLE")) {
-                                $install_status["creates"]++;
-                            }
+                        if (str_starts_with($query, 'INSERT INTO')) {
+                            $install_status['inserts']++;
+                        } elseif (str_starts_with($query, 'DROP TABLE')) {
+                            $install_status['drops']++;
+                        } elseif (str_starts_with($query, 'CREATE TABLE')) {
+                            $install_status['creates']++;
                         }
                     }
                 }
             }
         }
+    }
 
-        if (!$hasErrors) {
-            // Drop legacy textitems table if it exists (replaced by word_occurrences)
-            Connection::execute("DROP TABLE IF EXISTS textitems");
+    if (!$hasErrors) {
+        // Drop legacy textitems table if it exists (replaced by word_occurrences)
+        Connection::execute('DROP TABLE IF EXISTS textitems');
 
-            // Clear migration history so all migrations run fresh on restored data.
-            // This handles old backups that predate the migration system or have
-            // different schema versions. The migrations will bring the schema up to date.
-            try {
-                Connection::execute("DELETE FROM _migrations");
-            } catch (\RuntimeException $e) {
-                // Table might not exist in old backups, that's fine
-            }
-
-            // Reset dbversion to force migration check
-            // The old backup might have a different version or no version at all
-            try {
-                QueryBuilder::table('settings')
-                    ->where('StKey', '=', 'dbversion')
-                    ->delete();
-            } catch (\RuntimeException $e) {
-                // Settings table might not exist yet or have different schema
-            }
-
-            // Drop all FK constraints before running migrations.
-            // SET FOREIGN_KEY_CHECKS = 0 only affects INSERT/UPDATE/DELETE and DROP TABLE,
-            // not ALTER TABLE MODIFY on columns referenced by FKs.
-            // The migrations will recreate FKs as needed.
-            Migrations::dropAllForeignKeys();
-
-            // Disable FK checks during migrations to handle legacy backup data
-            // that may not satisfy new FK constraints until fully migrated
-            Connection::execute("SET FOREIGN_KEY_CHECKS = 0");
-            try {
-                Migrations::checkAndUpdate();
-            } finally {
-                Connection::execute("SET FOREIGN_KEY_CHECKS = 1");
-            }
-            Migrations::reparseAllTexts();
-            Maintenance::optimizeDatabase();
-            TagsFacade::getAllTermTags(true);
-            TagsFacade::getAllTextTags(true);
-            $message = "Success: $title restored";
-        } elseif ($message == "") {
-            $message = "Error: $title NOT restored";
+        // Clear migration history so all migrations run fresh on restored data.
+        try {
+            Connection::execute('DELETE FROM _migrations');
+        } catch (\RuntimeException $e) {
+            // Table might not exist in old backups, that's fine
         }
 
-        $message .= sprintf(
-            " - %d queries - %d successful (%d/%d tables dropped/created, " .
-            "%d records added), %d failed.",
-            $install_status["queries"],
-            $install_status["successes"],
-            $install_status["drops"],
-            $install_status["creates"],
-            $install_status["inserts"],
-            $install_status["errors"]
-        );
-        return $message;
+        // Reset dbversion to force migration check
+        try {
+            QueryBuilder::table('settings')
+                ->where('StKey', '=', 'dbversion')
+                ->delete();
+        } catch (\RuntimeException $e) {
+            // Settings table might not exist yet or have different schema
+        }
+
+        // Rebuild constraints and schema
+        Migrations::dropAllForeignKeys();
+
+        Connection::execute('SET FOREIGN_KEY_CHECKS = 0');
+        try {
+            Migrations::checkAndUpdate();
+        } finally {
+            Connection::execute('SET FOREIGN_KEY_CHECKS = 1');
+        }
+
+        Migrations::reparseAllTexts();
+        Maintenance::optimizeDatabase();
+        TagsFacade::getAllTermTags(true);
+        TagsFacade::getAllTextTags(true);
+
+        $message = "Success: $title restored";
+    } elseif ($message === '') {
+        $message = "Error: $title NOT restored";
     }
+
+    $message .= sprintf(
+        ' - %d queries - %d successful (%d/%d tables dropped/created, %d records added), %d failed.',
+        $install_status['queries'],
+        $install_status['successes'],
+        $install_status['drops'],
+        $install_status['creates'],
+        $install_status['inserts'],
+        $install_status['errors']
+    );
+
+    return $message;
+}
 
     /**
      * Truncate the database, remove all data belonging by the current user.

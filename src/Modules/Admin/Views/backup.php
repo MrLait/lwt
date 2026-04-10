@@ -191,9 +191,9 @@ $uploadMaxFilesize = ini_get('upload_max_filesize');
                     <label class="label"><?php echo __e('admin.restore_file_label'); ?></label>
                     <div class="file has-name is-fullwidth">
                         <label class="file-label">
-                            <input class="file-input" type="file" name="thefile"
-                                   @change="fileName = $event.target.files[0]?.name || ''"
-                                   accept=".sql,.gz,.sql.gz">
+<input class="file-input" type="file" name="thefile"
+       @change="fileName = ($event.target.files && $event.target.files[0]) ? $event.target.files[0].name : ''"
+       accept=".sql,.gz,.sql.gz">
                             <span class="file-cta">
                                 <span class="file-icon">
                                     <?php echo IconHelper::render('upload'); ?>

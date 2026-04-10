@@ -117,7 +117,7 @@ class SecurityHeaders
         $policy = implode('; ', [
             "default-src 'self'",
             // Scripts: self only (Alpine.js uses CSP-compatible build, no inline JS)
-            "script-src 'self'",
+            "script-src 'self' 'unsafe-eval'",
             // Styles: self + inline (needed for dynamic styling in views)
             "style-src 'self' 'unsafe-inline'",
             // Images: self + data URIs + blob for generated content

@@ -50,12 +50,21 @@ class SqlFileParser
             // Add stream to accumulator
             $curr_content .= $stream;
             // Get queries
-            $queries = explode(';' . PHP_EOL, $curr_content);
-            // Replace line by remainders of the last element (incomplete line)
-            $curr_content = array_pop($queries);
-            foreach ($queries as $query) {
-                $queries_list[] = trim($query);
-            }
+$normalizedContent = str_replace("\r\n", "\n", $curr_content);
+$queries = preg_split("/;\n/", $normalizedContent);
+
+if ($queries === false) {
+    $queries = [$normalizedContent];
+}
+
+$curr_content = array_pop($queries) ?? '';
+
+foreach ($queries as $query) {
+    $query = trim($query);
+    if ($query !== '') {
+        $queries_list[] = $query;
+    }
+}
         }
         // Add final query if there's any remaining content
         if (!empty(trim($curr_content))) {

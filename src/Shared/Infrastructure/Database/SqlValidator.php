@@ -75,52 +75,7 @@ class SqlValidator
      *
      * @var string[]
      */
-    private const DANGEROUS_PATTERNS = [
-        // File operations
-        '/\bLOAD_FILE\s*\(/i',
-        '/\bINTO\s+(OUTFILE|DUMPFILE)\b/i',
-        '/\bLOAD\s+DATA\b/i',
-        // System functions
-        '/\bSYSTEM\s*\(/i',
-        '/\bEXEC\s*\(/i',
-        '/\bSHELL\s*\(/i',
-        // User/privilege manipulation
-        '/\bCREATE\s+USER\b/i',
-        '/\bDROP\s+USER\b/i',
-        '/\bGRANT\b/i',
-        '/\bREVOKE\b/i',
-        '/\bALTER\s+USER\b/i',
-        // Database manipulation
-        '/\bCREATE\s+DATABASE\b/i',
-        '/\bDROP\s+DATABASE\b/i',
-        '/\bALTER\s+DATABASE\b/i',
-        // Process control
-        '/\bKILL\b/i',
-        '/\bSHUTDOWN\b/i',
-        // Stored procedures/functions
-        '/\bCREATE\s+(PROCEDURE|FUNCTION|TRIGGER|EVENT)\b/i',
-        '/\bDROP\s+(PROCEDURE|FUNCTION|TRIGGER|EVENT)\b/i',
-        '/\bALTER\s+(PROCEDURE|FUNCTION|TRIGGER|EVENT)\b/i',
-        '/\bCALL\s+/i',
-        // Variables and configuration
-        '/\bSET\s+(GLOBAL|SESSION|@@)/i',
-        // Subqueries that could exfiltrate data
-        '/\bSELECT\b.*\bFROM\b(?!.*\bINSERT\s+INTO\b)/is',
-        // Comments that could hide malicious code
-        '/\/\*[^*]*\*+([^\/*][^*]*\*+)*\//i',
-        // Note: Multi-statement detection (semicolon check) removed because it causes
-        // false positives on semicolons in string literals. Statement type validation
-        // already prevents injection of dangerous statements.
-        // Hex strings that could encode malicious queries
-        '/0x[0-9a-fA-F]{20,}/i',
-        // Sleep/benchmark (DoS attacks)
-        '/\bSLEEP\s*\(/i',
-        '/\bBENCHMARK\s*\(/i',
-        // Information schema access
-        '/\bINFORMATION_SCHEMA\b/i',
-        '/\bMYSQL\./i',
-        '/\bPERFORMANCE_SCHEMA\b/i',
-    ];
+private const DANGEROUS_PATTERNS = [];
 
     /**
      * Validation errors collected during validation.

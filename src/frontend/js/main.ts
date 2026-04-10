@@ -38,7 +38,7 @@ import '@shared/stores/lwt_state';
 import '@shared/stores/app_data';
 
 // PWA support
-import '@shared/pwa/register';
+//import '@shared/pwa/register';
 
 // Offline support
 import '@shared/offline/offline-button';
@@ -112,47 +112,46 @@ const meta = document.querySelector<HTMLMetaElement>('meta[name="lwt-modules"]')
 const requestedModules = meta?.content?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
 
 // Start loading all requested modules in parallel
-const loaders = requestedModules
-  .filter(m => m in moduleMap)
-  .map(m => moduleMap[m]());
+const modulesToLoad = requestedModules.filter(m => m in moduleMap);
 
-// Wait for all dynamic modules to load, then initialize Alpine
-Promise.all(loaders).then(() => {
-  // Initialize i18n translations from server-injected JSON
-  initI18n();
-
-  // Initialize ARIA live regions for screen reader announcements
-  initAriaLive();
-
-  // Initialize Alpine.js globally
-  window.Alpine = Alpine;
-
-  // Register Alpine.js magic for translations: this.$t('common.save')
-  Alpine.magic('t', () => (key: string, params?: Record<string, string | number>) => {
-    return t(key, params);
-  });
-
-  // Register Alpine.js magic method for inline Markdown parsing
-  // Note: Returns plain text since x-html is not CSP-compatible
-  // Markdown bold/italic is stripped, only plain text is returned
-  Alpine.magic('markdown', () => (text: string) => {
-    // For CSP compatibility, strip markdown formatting and return plain text
-    // This avoids needing innerHTML which is prohibited in CSP build
-    if (!text) return '';
-    return text
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Bold
-      .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1') // Italic
-      .replace(/~~([^~]+)~~/g, '$1') // Strikethrough
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Links (keep text only)
-  });
-
-  // Start Alpine.js
-  Alpine.start();
-
-  window.LWT_VITE_LOADED = true;
-
-  // Log to console in development
-  if (import.meta.env.DEV) {
-    console.log('LWT Vite bundle loaded (development mode)');
-  }
+modulesToLoad.forEach(m => {
+  console.log('[LWT] loading module:', m);
 });
+
+Promise.allSettled(modulesToLoad.map(m => moduleMap[m]()))
+  .then((results) => {
+    results.forEach((result, idx) => {
+      const name = modulesToLoad[idx];
+      if (result.status === 'rejected') {
+        console.error('[LWT] module failed:', name, result.reason);
+      } else {
+        console.log('[LWT] module loaded:', name);
+      }
+    });
+
+    initI18n();
+    initAriaLive();
+
+    window.Alpine = Alpine;
+
+    Alpine.magic('t', () => (key: string, params?: Record<string, string | number>) => {
+      return t(key, params);
+    });
+
+    Alpine.magic('markdown', () => (text: string) => {
+      if (!text) return '';
+      return text
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+        .replace(/~~([^~]+)~~/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    });
+
+    Alpine.start();
+
+    window.LWT_VITE_LOADED = true;
+
+    if (import.meta.env.DEV) {
+      console.log('LWT Vite bundle loaded (development mode)');
+    }
+  });
