@@ -76,9 +76,8 @@ export function insertNewWord(wordId: number, solution: string, group: string): 
   setReviewSolution(solution);
   setCurrentWordId(wordId);
 
-  const termReviewEl =
-    document.getElementById('term-review') ||
-    document.getElementById('review-app');
+  const termReviewEl = document.getElementById('term-review');
+
   if (termReviewEl) {
     termReviewEl.innerHTML = group;
   }
