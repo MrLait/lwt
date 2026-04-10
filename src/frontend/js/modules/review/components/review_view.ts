@@ -128,7 +128,7 @@ function buildProgressBar(): string {
         <div class="level-left">
           <div class="level-item">
             <span>${escapeHtml(t('review.progress.time'))} </span>
-            <span x-text="store.timer.elapsed">00:00</span>
+            <span x-text="timerDisplay">00:00</span>
           </div>
         </div>
 
@@ -640,8 +640,10 @@ export function initReviewApp(): void {
 function registerReviewAppComponent(config: ReviewConfig): void {
   Alpine.data('reviewApp', () => ({
     navbarOpen: false,
+    timerDisplay: '00:00',
+    timerIntervalId: null,
 
-    get store(): ReviewStoreState {
+    get store() {
       return getReviewStore();
     },
 
@@ -655,14 +657,53 @@ function registerReviewAppComponent(config: ReviewConfig): void {
     },
 
     async init() {
-      this.store.configure(config);
 
-      // Set up keyboard handler
-      window.addEventListener('keydown', (e) => this.handleKeydown(e), { capture: true });
+      try {
+        this.store.configure(config);
 
-      // Start fetching first word if not table mode
-      if (!config.isTableMode) {
-        await this.store.nextWord();
+        this.startLocalTimer();
+
+        window.addEventListener('keydown', (e) => this.handleKeydown(e), { capture: true });
+
+        if (!config.isTableMode) {
+          await this.store.nextWord();
+        }
+
+      } catch (err) {
+        console.error('INIT ERROR:', err);
+      }
+    },
+
+    startLocalTimer() {
+      if (this.timerIntervalId !== null) return;
+
+      const startTime = Math.floor(Date.now() / 1000);
+      const self = this;
+
+      const update = () => {
+        const now = Math.floor(Date.now() / 1000);
+        const elapsed = now - startTime;
+        self.timerDisplay = self.formatTime(elapsed);
+      };
+
+      update();
+      this.timerIntervalId = window.setInterval(update, 1000);
+    },
+
+    formatTime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      const pad = (n) => n.toString().padStart(2, '0');
+      return hours > 0
+        ? `${pad(hours)}:${pad(minutes)}:${pad(secs)}`
+        : `${pad(minutes)}:${pad(secs)}`;
+    },
+
+    stopLocalTimer() {
+      if (this.timerIntervalId !== null) {
+        window.clearInterval(this.timerIntervalId);
+        this.timerIntervalId = null;
       }
     },
 
@@ -681,7 +722,7 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       await this.store.decrementStatus();
     },
 
-    async setStatus(status: number) {
+    async setStatus(status) {  // Убрали ": number"
       await this.store.updateStatus(status);
     },
 
@@ -689,7 +730,7 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       await this.store.skipWord();
     },
 
-    switchReviewType(type: number) {
+    switchReviewType(type) {  // Убрали ": number"
       const url = new URL(window.location.href);
       url.searchParams.set('type', String(type));
       window.location.href = url.toString();
@@ -711,134 +752,108 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       }
     },
 
-    toggleReadAloud(event: Event) {
-      const target = event.target as HTMLInputElement;
+    toggleReadAloud(event) {  // Убрали ": Event"
+      const target = event.target;
       this.store.setReadAloud(target.checked);
     },
 
-    handleKeydown(e: KeyboardEvent) {
-      // Игнорируем, если модальное окно открыто
+    handleKeydown(e) {  // Убрали ": KeyboardEvent"
       if (this.store.isModalOpen) return;
-
-      // Игнорируем, если фокус на поле ввода
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-      // Игнорируем, если табличный режим или тест завершен
       if (this.store.isTableMode || this.store.isFinished) return;
 
-      // ВАЖНО: Предотвращаем стандартное поведение ДО обработки клавиши
       const key = e.key;
-      const code = e.code;
 
-      // Список всех клавиш, которые мы обрабатываем
       const handledKeys = [
         ' ', 'Space', 'Escape', 'ArrowUp', 'ArrowDown',
         'i', 'I', 'w', 'W', 'e', 'E', '1', '2', '3', '4', '5'
       ];
-      // Проверяем, нужно ли обрабатывать эту клавишу
-      const shouldHandle = handledKeys.includes(key) ||
-        handledKeys.includes(code) ||
-        (key >= '1' && key <= '5');
-      if (!shouldHandle) return;
 
-      // ВСЕГДА предотвращаем стандартное поведение для обрабатываемых клавиш
+      if (!handledKeys.includes(key)) return;
+
       e.preventDefault();
       e.stopPropagation();
-      e.stopImmediatePropagation(); // Дополнительная защита
 
-      setTimeout(() => {
-        // Теперь обрабатываем клавишу
-        switch (key) {
-          case ' ':
-          case 'Space':
-            if (!this.store.answerRevealed) {
-              this.revealAnswer();
-            }
-            break;
+      // Убрали setTimeout - он не нужен
+      switch (key) {
+        case ' ':
+          if (!this.store.answerRevealed) {
+            this.revealAnswer();
+          }
+          break;
 
-          case 'Escape':
-            if (this.store.currentWord) {
-              this.skipWord();
-            }
-            break;
+        case 'Escape':
+          if (this.store.currentWord) {
+            this.skipWord();
+          }
+          break;
 
-          case 'ArrowUp':
-            if (this.store.answerRevealed) {
-              this.incrementStatus();
-            }
-            break;
+        case 'ArrowUp':
+          if (this.store.answerRevealed) {
+            this.incrementStatus();
+          }
+          break;
 
-          case 'ArrowDown':
-            if (this.store.answerRevealed) {
-              this.decrementStatus();
-            }
-            break;
+        case 'ArrowDown':
+          if (this.store.answerRevealed) {
+            this.decrementStatus();
+          }
+          break;
 
-          case 'i':
-          case 'I':
-            if (this.store.currentWord) {
-              this.setStatus(98);
-            }
-            break;
+        case 'i':
+        case 'I':
+          if (this.store.currentWord) {
+            this.setStatus(98);
+          }
+          break;
 
-          case 'w':
-          case 'W':
-            if (this.store.currentWord) {
-              this.setStatus(99);
-            }
-            break;
+        case 'w':
+        case 'W':
+          if (this.store.currentWord) {
+            this.setStatus(99);
+          }
+          break;
 
-          case 'e':
-          case 'E':
-            if (this.store.currentWord) {
-              this.store.openModal();
-            }
-            break;
+        case 'e':
+        case 'E':
+          if (this.store.currentWord) {
+            this.store.openModal();
+          }
+          break;
 
-          case '1':
-          case '2':
-          case '3':
-          case '4':
-          case '5':
-            if (this.store.answerRevealed) {
-              this.setStatus(parseInt(key, 10));
-            }
-            break;
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+          if (this.store.answerRevealed) {
+            this.setStatus(parseInt(key, 10));
+          }
+          break;
+      }
+    },
 
-          default:
-            // Для необрабатываемых клавиш не вызываем preventDefault
-            return;
-        }
-      }, 10);
-    }, // Небольшая задержка 10ms,
-
-    // Finished state helpers (CSP-compatible)
-    getFinishedTitle(): string {
+    // Finished state helpers
+    getFinishedTitle() {
       if (this.store.progress.total > 0) {
         return t('review.finished.nothing_more');
       }
       return t('review.no_vocabulary_title');
     },
 
-    hasNoVocabulary(): boolean {
+    hasNoVocabulary() {
       return this.store.progress.total === 0;
     },
 
-    getNoVocabularyHint(): string {
+    getNoVocabularyHint() {
       return t('review.no_vocabulary_hint');
     },
 
-    hasTomorrowWords(): boolean {
+    hasTomorrowWords() {
       return this.store.tomorrowCount > 0;
     },
 
-    getTomorrowLabel(): string {
-      return this.store.tomorrowCount === 1
-        ? t('review.finished.tomorrow_one')
-        : t('review.finished.tomorrow_many');
-    },
-
-    getTomorrowMessage(): string {
+    getTomorrowMessage() {
       const count = this.store.tomorrowCount;
       return t(
         count === 1
@@ -848,21 +863,19 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       );
     },
 
-    // Safe accessors (CSP-compatible - avoid ?. in templates)
-    getCurrentWordGroup(): string {
+    getCurrentWordGroup() {
       return this.store.currentWord ? this.store.currentWord.group : '';
     },
 
-    getCurrentWordSolution(): string {
+    getCurrentWordSolution() {
       return this.store.currentWord ? this.store.currentWord.solution : '';
     },
 
-    getCurrentWordStatus(): number {
+    getCurrentWordStatus() {
       return this.store.currentWord ? this.store.currentWord.status : 0;
     },
 
-    // CSP-compatible innerHTML setter (use with x-effect)
-    setTermDisplayHtml(el: HTMLElement) {
+    setTermDisplayHtml(el) {  // Убрали ": HTMLElement"
       el.innerHTML = this.getCurrentWordGroup();
     }
   }));

@@ -104,9 +104,6 @@ export interface ReviewStoreState {
   // Progress tracking
   progress: ReviewProgress;
 
-  // Timer
-  timer: ReviewTimer;
-
   // UI state
   isLoading: boolean;
   isFinished: boolean;
@@ -125,9 +122,6 @@ export interface ReviewStoreState {
   incrementStatus(): Promise<void>;
   decrementStatus(): Promise<void>;
   skipWord(): Promise<void>;
-  startTimer(): void;
-  stopTimer(): void;
-  formatElapsed(seconds: number): string;
   getDictUrl(which: 'dict1' | 'dict2' | 'translator'): string;
   hasDictUrl(which: 'dict1' | 'dict2' | 'translator'): boolean;
   getEditUrl(): string;
@@ -157,12 +151,18 @@ interface ReviewStoreInitialValues {
   reviewType?: number;
   isTableMode?: boolean;
 }
-
+interface WordTestDataWithStatus {
+  term_id: number | string;
+  solution?: string;
+  term_text: string;
+  group: string;
+  status?: number; // Добавляем статус как опциональное поле
+}
 /**
  * Create the review store data object.
  */
 function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStoreState {
-  return {
+  const store: ReviewStoreState = {
     // Review configuration
     reviewKey: '',
     selection: '',
@@ -196,14 +196,6 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       correct: 0
     },
 
-    // Timer - ВАЖНО: делаем его реактивным через Alpine.reactive
-    timer: Alpine.reactive({
-      startTime: 0,
-      serverTime: 0,
-      elapsed: '00:00',
-      intervalId: null
-    }) as ReviewTimer,
-
     // UI state
     isLoading: false,
     isFinished: false,
@@ -214,10 +206,8 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
     error: null,
     isInitialized: false,
 
-    /**
-     * Configure the store with settings from server.
-     * Note: Named 'configure' instead of 'init' because Alpine auto-calls init() on stores.
-     */
+    // ===== МЕТОДЫ =====
+
     configure(config: ReviewConfig): void {
       this.reviewKey = config.reviewKey;
       this.selection = config.selection;
@@ -230,10 +220,8 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       this.title = config.title;
       this.langSettings = config.langSettings;
       this.progress = { ...config.progress };
-      this.timer.startTime = config.timer.startTime;
-      this.timer.serverTime = config.timer.serverTime;
 
-      // Load read aloud preference from localStorage
+
       const savedReadAloud = localStorage.getItem('lwt-review-read-aloud');
       if (savedReadAloud !== null) {
         this.readAloudEnabled = savedReadAloud === 'true';
@@ -241,14 +229,8 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
 
       this.isInitialized = true;
 
-      // ВАЖНО: Запускаем таймер с привязкой к DOM
-      this.startTimer();
-
     },
 
-    /**
-     * Fetch and display the next word.
-     */
     async nextWord(): Promise<void> {
       if (this.isLoading) return;
 
@@ -274,11 +256,9 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
         }
 
         if (!response.data || response.data.term_id === 0) {
-          // No more words to test
           this.isFinished = true;
           this.stopTimer();
 
-          // Fetch tomorrow count
           const tomorrowResponse = await ReviewApi.getTomorrowCount(
             this.reviewKey,
             this.selection
@@ -287,7 +267,7 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
             this.tomorrowCount = tomorrowResponse.data.count;
           }
         } else {
-          const data = response.data;
+          const data = response.data as WordTestDataWithStatus;
           this.currentWord = {
             wordId: typeof data.term_id === 'string'
               ? parseInt(data.term_id, 10)
@@ -295,7 +275,7 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
             text: data.term_text,
             translation: '',
             romanization: '',
-            status: 1, // По умолчанию статус 1 (Learning)
+            status: data.status ?? 1,
             sentence: '',
             solution: data.solution || '',
             group: data.group
@@ -309,20 +289,11 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       this.isLoading = false;
     },
 
-    /**
-     * Reveal the answer for the current word.
-     */
     revealAnswer(): void {
       if (this.answerRevealed || !this.currentWord) return;
       this.answerRevealed = true;
     },
 
-    /**
-     * Update the status of the current word.
-     *
-     * @param status    New status value (1-5)
-     * @param isCorrect Whether the user answered correctly (true=knew it, false=didn't know)
-     */
     async updateStatus(status: number, isCorrect: boolean = true): Promise<void> {
       if (!this.currentWord || this.isLoading) return;
 
@@ -341,7 +312,6 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
           return;
         }
 
-        // Обновляем прогресс (реактивно)
         if (this.progress.remaining > 0) {
           this.progress.remaining--;
         }
@@ -352,15 +322,12 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
           this.progress.wrong++;
         }
 
-        // Воспроизводим звук
         this.playSound(isCorrect);
 
-        // Проверяем, завершена ли сессия
         if (this.progress.remaining === 0) {
           this.isFinished = true;
           this.stopTimer();
 
-          // Загружаем количество слов на завтра
           const tomorrowResponse = await ReviewApi.getTomorrowCount(
             this.reviewKey,
             this.selection
@@ -374,10 +341,7 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
           return;
         }
 
-        // Сбрасываем флаг загрузки
         this.isLoading = false;
-
-        // Загружаем следующее слово
         await this.nextWord();
 
       } catch (err) {
@@ -387,111 +351,35 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       }
     },
 
-    /**
-     * Increment the current word's status.
-     */
     async incrementStatus(): Promise<void> {
       if (!this.currentWord || !this.answerRevealed) return;
-
       const newStatus = calculateNewStatus(this.currentWord.status, 1);
       await this.updateStatus(newStatus, true);
     },
 
-    /**
-     * Decrement the current word's status.
-     */
     async decrementStatus(): Promise<void> {
       if (!this.currentWord || !this.answerRevealed) return;
-
       const newStatus = calculateNewStatus(this.currentWord.status, -1);
       await this.updateStatus(newStatus, false);
     },
 
-    /**
-     * Skip the current word without changing its status.
-     */
     async skipWord(): Promise<void> {
       if (!this.currentWord || this.isLoading) return;
-
-      // Update with same status (no change)
       await this.updateStatus(this.currentWord.status);
     },
 
-    /**
-     * Start the elapsed timer.
-     */
-    startTimer(): void {
-      if (this.timer.intervalId !== null) return;
-
-      const updateTimer = () => {
-        const now = Math.floor(Date.now() / 1000);
-        const clientOffset = now - this.timer.serverTime;
-        const elapsed = now - this.timer.startTime - clientOffset;
-
-        // Обновляем свойство - Alpine.effect отреагирует на это изменение
-        this.timer.elapsed = this.formatElapsed(Math.max(0, elapsed));
-      };
-
-      // Первое обновление сразу
-      updateTimer();
-
-      // Запускаем интервал
-      this.timer.intervalId = window.setInterval(updateTimer, 1000);
-    },
-
-    /**
-     * Stop the elapsed timer.
-     */
-    stopTimer(): void {
-      if (this.timer.intervalId !== null) {
-        window.clearInterval(this.timer.intervalId);
-        this.timer.intervalId = null;
-      }
-    },
-
-    /**
-     * Format seconds as MM:SS or HH:MM:SS.
-     */
-    formatElapsed(seconds: number): string {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-
-      const pad = (n: number) => n.toString().padStart(2, '0');
-
-      if (hours > 0) {
-        return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
-      }
-      return `${pad(minutes)}:${pad(secs)}`;
-    },
-
-    /**
-     * Get dictionary URL for the current word.
-     */
     getDictUrl(which: 'dict1' | 'dict2' | 'translator'): string {
       if (!this.currentWord) return '#';
-
       let template = '';
       switch (which) {
-        case 'dict1':
-          template = this.langSettings.dict1Uri;
-          break;
-        case 'dict2':
-          template = this.langSettings.dict2Uri;
-          break;
-        case 'translator':
-          template = this.langSettings.translateUri;
-          break;
+        case 'dict1': template = this.langSettings.dict1Uri; break;
+        case 'dict2': template = this.langSettings.dict2Uri; break;
+        case 'translator': template = this.langSettings.translateUri; break;
       }
-
       if (!template) return '#';
-
       return template.replace('lwt_term', encodeURIComponent(this.currentWord.text));
     },
 
-    /**
-     * Check if a dictionary URL is configured.
-     */
     hasDictUrl(which: 'dict1' | 'dict2' | 'translator'): boolean {
       switch (which) {
         case 'dict1': return !!this.langSettings.dict1Uri;
@@ -500,50 +388,35 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
       }
     },
 
-    /**
-     * Get edit URL for the current word.
-     */
     getEditUrl(): string {
       if (!this.currentWord) return '#';
       return `/word/edit-term?wid=${this.currentWord.wordId}`;
     },
 
-    /**
-     * Open the word details modal.
-     */
     openModal(): void {
       this.isModalOpen = true;
     },
 
-    /**
-     * Close the word details modal.
-     */
     closeModal(): void {
       this.isModalOpen = false;
     },
 
-    /**
-     * Play success or failure sound.
-     */
     playSound(correct: boolean): void {
       const soundId = correct ? 'success_sound' : 'failure_sound';
       const audio = document.getElementById(soundId) as HTMLAudioElement | null;
       if (audio) {
         audio.currentTime = 0;
-        audio.play().catch(() => {
-          // Ignore autoplay errors
-        });
+        audio.play().catch(() => { });
       }
     },
 
-    /**
-     * Set read aloud preference (CSP-compatible setter).
-     */
     setReadAloud(enabled: boolean): void {
       this.readAloudEnabled = enabled;
       localStorage.setItem('lwt-review-read-aloud', String(enabled));
     }
   };
+
+  return store;
 }
 
 /**
