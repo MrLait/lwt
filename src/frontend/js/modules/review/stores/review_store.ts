@@ -156,7 +156,8 @@ interface WordTestDataWithStatus {
   solution?: string;
   term_text: string;
   group: string;
-  status?: number; // Добавляем статус как опциональное поле
+  status?: number;
+  sentence?: string;
 }
 /**
  * Create the review store data object.
@@ -278,7 +279,7 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
             translation: '',
             romanization: '',
             status: data.status ?? 1,
-            sentence: '',
+            sentence: data.sentence || '',
             solution: data.solution || '',
             group: data.group
           };

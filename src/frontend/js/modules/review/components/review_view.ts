@@ -237,6 +237,14 @@ function buildWordReviewArea(): string {
           <p class="is-size-4" x-text="getCurrentWordSolution()"></p>
         </div>
 
+        <!-- Sentence context (shown after answer revealed) -->
+        <div x-show="store.answerRevealed && hasSentenceContext()" class="notification is-info is-light mb-5">
+          <p class="is-size-4 sentence-context"
+            :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
+            x-effect="setSentenceContextHtml($el)">
+          </p>
+        </div>
+
         <!-- Action buttons -->
         <div class="buttons is-centered mb-5">
           <button x-show="!store.answerRevealed"
@@ -506,15 +514,14 @@ function buildStyles(): string {
       }
 
       .review-word-area {
-        min-height: 400px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        min-height: 50px;
+        padding-top: 50px;
       }
 
       .review-term-display {
-        min-height: 100px;
+        min-height: 50px;
         line-height: 1.6;
+        margin-bottom: 30px;
       }
 
       .review-progress {
@@ -878,7 +885,30 @@ function registerReviewAppComponent(config: ReviewConfig): void {
 
     setTermDisplayHtml(el) {  // Убрали ": HTMLElement"
       el.innerHTML = this.getCurrentWordGroup();
-    }
+    },
+    hasSentenceContext() {
+      if (!this.store.currentWord) return false;
+      const sentence = this.store.currentWord.sentence;
+      if (!sentence) return false;
+      // Убираем маркеры {} и проверяем длину
+      const clean = sentence.replace(/[{}]/g, '').trim();
+      return clean.length > this.store.currentWord.text.length + 3;
+    },
+
+    getSentenceHtml() {
+      if (!this.store.currentWord) return '';
+      const sentence = this.store.currentWord.sentence;
+      if (!sentence) return '';
+
+      // Заменяем {слово} на выделенный span
+      return sentence
+        .replace(/\{([^}]+)\}/g, '<strong class="has-text-primary">$1</strong>')
+        .replace(/[{}]/g, '');
+    },
+
+    setSentenceContextHtml(el) {
+      el.innerHTML = this.getSentenceHtml();
+    },
   }));
 }
 

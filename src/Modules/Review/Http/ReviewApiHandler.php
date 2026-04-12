@@ -143,7 +143,10 @@ class ReviewApiHandler implements ApiRoutableInterface
             "solution" => $solution,
             "term_text" => $save,
             "group" => $htmlSentence,
-            "status" => is_numeric($wordRecord['WoStatus'] ?? null) ? (int) $wordRecord['WoStatus'] : 1
+            "status" => is_numeric($wordRecord['WoStatus'] ?? null) ? (int) $wordRecord['WoStatus'] : 1,
+                "sentence" => is_string($wordRecord['WoSentence'] ?? null) 
+        ? trim($wordRecord['WoSentence']) 
+        : ''
         ];
     }
 

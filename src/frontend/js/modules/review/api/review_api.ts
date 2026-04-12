@@ -16,6 +16,7 @@ export interface WordTestData {
   term_text: string;
   group: string;
   status: number;
+  sentence: string;
 }
 
 /**
