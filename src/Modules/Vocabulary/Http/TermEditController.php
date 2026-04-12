@@ -197,7 +197,7 @@ class TermEditController extends VocabularyBaseController
 
         // Prepare view variables
         $textId = InputValidator::getInt('tid', 0) ?? 0;
-        $status = InputValidator::getString('WoStatus');
+        $status = (int) InputValidator::getString('WoStatus');
         $romanization = InputValidator::getString('WoRomanization');
         $fromAnn = InputValidator::getString('fromAnn');
 
@@ -515,7 +515,7 @@ class TermEditController extends VocabularyBaseController
                 )
             );
 
-            $status = $newstatus;
+            $status = (int) $newstatus;
             $romanization = $woRomanization;
             $text = $woText;
             $tagList = TagsFacade::getWordTagList($wid, false);
@@ -550,7 +550,7 @@ class TermEditController extends VocabularyBaseController
         $wid = (int) $widParam;
 
         $record = QueryBuilder::table('words')
-            ->select(['WoText', 'WoLgID', 'WoTranslation', 'WoSentence', 'WoNotes', 'WoRomanization', 'WoStatus'])
+            ->select(['WoText', 'WoLgID', 'WoTranslation', 'WoSentence', 'WoNotes', 'WoRomanization', 'WoStatus', 'WoLemma'])
             ->where('WoID', '=', $wid)
             ->firstPrepared();
         if ($record !== null) {
@@ -567,6 +567,7 @@ class TermEditController extends VocabularyBaseController
             $showRoman = (bool) QueryBuilder::table('languages')
                 ->where('LgID', '=', $lang)
                 ->valuePrepared('LgShowRomanization');
+            $lemma = isset($record['WoLemma']) ? (string) $record['WoLemma'] : '';
         } else {
             throw new \RuntimeException("Term data not found: invalid term ID");
         }
@@ -600,6 +601,7 @@ class TermEditController extends VocabularyBaseController
             'sentence' => $sentence,
             'notes' => $notes,
             'rom' => $rom,
+            'lemma' => $lemma,
             'status' => $status,
             'showRoman' => $showRoman,
             'scrdir' => $scrdir,
