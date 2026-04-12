@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 /**
  * Review View - Client-side rendered review interface.
  *
@@ -264,11 +265,11 @@ function buildWordReviewArea(): string {
         <div x-show="store.answerRevealed" class="mb-5">
           <p class="is-size-7 has-text-grey mb-2">${escapeHtml(t('review.card.set_status_directly'))}</p>
           <div class="buttons is-centered are-small">
-            ${[1, 2, 3, 4, 5].map(s => `
-              <button class="button status-btn"
-                      :class="{ 'status-${s}': getCurrentWordStatus() === ${s} }"
-                      @click="setStatus(${s})">${s}</button>
-            `).join('')}
+${[1, 2, 3, 4, 5].map(s => `
+  <button class="button status-btn"
+          :class="getCurrentWordStatus() === ${s} ? 'status-${s}' : ''"
+          @click="setStatus(${s})">${s}</button>
+`).join('')}
             <button class="button" @click="setStatus(98)" title="Press I">
               ${escapeHtml(t('review.card.ignore'))}
             </button>

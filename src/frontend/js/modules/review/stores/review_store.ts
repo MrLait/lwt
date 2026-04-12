@@ -268,6 +268,8 @@ function createReviewStore(initialValues?: ReviewStoreInitialValues): ReviewStor
           }
         } else {
           const data = response.data as WordTestDataWithStatus;
+          console.log('Word data from API:', data);  // ← что возвращает API?
+          console.log('Status:', data.status);
           this.currentWord = {
             wordId: typeof data.term_id === 'string'
               ? parseInt(data.term_id, 10)

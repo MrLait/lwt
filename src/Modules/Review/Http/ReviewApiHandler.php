@@ -142,7 +142,8 @@ class ReviewApiHandler implements ApiRoutableInterface
             "term_id" => is_numeric($wordRecord['WoID']) ? (int) $wordRecord['WoID'] : 0,
             "solution" => $solution,
             "term_text" => $save,
-            "group" => $htmlSentence
+            "group" => $htmlSentence,
+            "status" => is_numeric($wordRecord['WoStatus'] ?? null) ? (int) $wordRecord['WoStatus'] : 1
         ];
     }
 
@@ -329,7 +330,8 @@ class ReviewApiHandler implements ApiRoutableInterface
             return [
                 "term_id" => 0,
                 "term_text" => '',
-                "group" => ''
+                "group" => '',
+    "status" => 0
             ];
         }
 
@@ -341,7 +343,8 @@ class ReviewApiHandler implements ApiRoutableInterface
             return [
                 "term_id" => 0,
                 "term_text" => '',
-                "group" => ''
+                "group" => '',
+    "status" => 0
             ];
         }
 
