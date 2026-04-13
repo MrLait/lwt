@@ -27,22 +27,22 @@ function getReviewTypes(): { id: number; label: string; title: string }[] {
       id: 1, label: t('review.type.sentence_to_translation.label'),
       title: t('review.type.sentence_to_translation.title')
     },
-    {
-      id: 2, label: t('review.type.sentence_to_term.label'),
-      title: t('review.type.sentence_to_term.title')
-    },
-    {
-      id: 3, label: t('review.type.sentence_to_both.label'),
-      title: t('review.type.sentence_to_both.title')
-    },
+    // {
+    //   id: 2, label: t('review.type.sentence_to_term.label'),
+    //   title: t('review.type.sentence_to_term.title')
+    // },
+    // {
+    //   id: 3, label: t('review.type.sentence_to_both.label'),
+    //   title: t('review.type.sentence_to_both.title')
+    // },
     {
       id: 4, label: t('review.type.term_to_translation.label'),
       title: t('review.type.term_to_translation.title')
     },
-    {
-      id: 5, label: t('review.type.translation_to_term.label'),
-      title: t('review.type.translation_to_term.title')
-    },
+    // {
+    //   id: 5, label: t('review.type.translation_to_term.label'),
+    //   title: t('review.type.translation_to_term.title')
+    // },
   ];
 }
 
@@ -883,17 +883,122 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       return this.store.currentWord ? this.store.currentWord.status : 0;
     },
 
-    setTermDisplayHtml(el) {  // Убрали ": HTMLElement"
-      el.innerHTML = this.getCurrentWordGroup();
+    setTermDisplayHtml(el) {
+      if (!this.store.currentWord) {
+        el.innerHTML = '';
+        return;
+      }
+
+      const sentence = this.store.currentWord.sentence;
+      const wordText = this.store.currentWord.text;
+      const reviewType = this.store.reviewType;
+
+      if (reviewType === 1) {
+        // Sentence → Translation: показываем предложение со скрытым словом
+        if (sentence) {
+          el.innerHTML = sentence
+            .replace(
+              new RegExp('\\{(' + this.escapeRegex(wordText) + ')\\}', 'gi'),
+              '<span class="word-test-hidden">[...]</span>'
+            )
+            .replace(/[{}]/g, '');
+        } else {
+          el.innerHTML = '<span class="word-test-hidden">[...]</span>';
+        }
+      } else if (reviewType === 2) {
+        // Sentence → Term: показываем предложение со скрытым словом (то же что тип 1)
+        if (sentence) {
+          el.innerHTML = sentence
+            .replace(
+              new RegExp('\\{(' + this.escapeRegex(wordText) + ')\\}', 'gi'),
+              '<span class="word-test-hidden">[...]</span>'
+            )
+            .replace(/[{}]/g, '');
+        } else {
+          el.innerHTML = '<span class="word-test-hidden">[...]</span>';
+        }
+      } else if (reviewType === 3) {
+        // Sentence → Both: предложение со скрытым словом
+        if (sentence) {
+          el.innerHTML = sentence
+            .replace(
+              new RegExp('\\{(' + this.escapeRegex(wordText) + ')\\}', 'gi'),
+              '<span class="word-test-hidden">[...]</span>'
+            )
+            .replace(/[{}]/g, '');
+        } else {
+          el.innerHTML = '<span class="word-test-hidden">[...]</span>';
+        }
+      } else if (reviewType === 4) {
+        // Term → Translation: показываем само слово
+        el.innerHTML = '<span class="word-test">' + this.escapeHtmlText(wordText) + '</span>';
+      } else if (reviewType === 5) {
+        // Translation → Term: показываем перевод (из solution)
+        const solution = this.store.currentWord.solution;
+        el.innerHTML = '<span class="word-test">' + this.escapeHtmlText(solution) + '</span>';
+      } else {
+        // Fallback: используем group
+        el.innerHTML = this.store.currentWord.group;
+      }
     },
+
+    setSentenceContextHtml(el) {
+      if (!this.store.currentWord) {
+        el.innerHTML = '';
+        return;
+      }
+
+      const reviewType = this.store.reviewType;
+      const wordText = this.store.currentWord.text;
+      const sentence = this.store.currentWord.sentence;
+
+      if (reviewType === 4) {
+        // Term → Translation: показываем предложение с выделенным словом
+        if (sentence) {
+          el.innerHTML = sentence
+            .replace(
+              new RegExp('\\{(' + this.escapeRegex(wordText) + ')\\}', 'gi'),
+              '<strong class="has-text-primary">$1</strong>'
+            )
+            .replace(/[{}]/g, '');
+        } else {
+          el.innerHTML = '';
+        }
+      } else if (reviewType === 5) {
+        // Translation → Term: показываем само слово
+        el.innerHTML = '<span class="word-test">' + this.escapeHtmlText(wordText) + '</span>';
+      } else {
+        // Типы 1,2,3: показываем само слово
+        el.innerHTML = '<span class="word-test">' + this.escapeHtmlText(wordText) + '</span>';
+      }
+    },
+
     hasSentenceContext() {
       if (!this.store.currentWord) return false;
-      const sentence = this.store.currentWord.sentence;
-      if (!sentence) return false;
-      // Убираем маркеры {} и проверяем длину
-      const clean = sentence.replace(/[{}]/g, '').trim();
-      return clean.length > this.store.currentWord.text.length + 3;
+      const reviewType = this.store.reviewType;
+
+      if (reviewType === 4) {
+        // Показываем предложение если оно есть
+        return !!this.store.currentWord.sentence;
+      }
+      if (reviewType === 5) {
+        // Показываем само слово
+        return true;
+      }
+      // Типы 1,2,3: показываем само слово после раскрытия
+      return true;
     },
+
+    escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    },
+
+    escapeHtmlText(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    },
+
 
     getSentenceHtml() {
       if (!this.store.currentWord) return '';
@@ -906,9 +1011,7 @@ function registerReviewAppComponent(config: ReviewConfig): void {
         .replace(/[{}]/g, '');
     },
 
-    setSentenceContextHtml(el) {
-      el.innerHTML = this.getSentenceHtml();
-    },
+
   }));
 }
 
