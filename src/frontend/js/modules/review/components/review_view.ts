@@ -756,9 +756,9 @@ function registerReviewAppComponent(config: ReviewConfig): void {
 
     revealAnswer() {
       this.store.revealAnswer();
-      if (this.store.readAloudEnabled && this.store.currentWord) {
-        this.speakWord();
-      }
+      // if (this.store.readAloudEnabled && this.store.currentWord) {
+      //   this.speakWord();
+      // }
     },
 
     async incrementStatus() {
@@ -826,6 +826,15 @@ function registerReviewAppComponent(config: ReviewConfig): void {
         case ' ':
           if (!this.store.answerRevealed) {
             this.revealAnswer();
+
+            if (this.store.readAloudEnabled) {
+              this.speakWord();
+            }
+          } else {
+            // повторное нажатие — повторить озвучку
+            if (this.store.readAloudEnabled) {
+              this.speakWord();
+            }
           }
           break;
 
