@@ -11,7 +11,7 @@
 
 import { onDomReady } from '@shared/utils/dom_ready';
 import Alpine from 'alpinejs';
-import type { ReviewStoreState, ReviewConfig, LangSettings } from '../stores/review_store';
+import type { ReviewConfig, LangSettings } from '../stores/review_store';
 import { getReviewStore, initReviewStore } from '../stores/review_store';
 import { ReviewApi, type TableReviewWord } from '@modules/review/api/review_api';
 import { speechDispatcher } from '@shared/utils/user_interactions';
@@ -220,79 +220,118 @@ function buildFinishedMessage(): string {
 function buildWordReviewArea(): string {
   return `
     <div x-show="!store.isFinished && store.currentWord" class="review-word-area">
+      
       <!-- Loading next word -->
       <div x-show="store.isLoading" class="has-text-centered py-4">
         <div class="loading-spinner"></div>
       </div>
 
       <div x-show="!store.isLoading" class="has-text-centered">
+      
         <!-- Term display -->
         <div class="review-term-display mb-5"
              :style="'font-size: ' + store.langSettings.textSize + '%; direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
              x-effect="setTermDisplayHtml($el)">
         </div>
 
-        <!-- Solution (hidden until revealed) -->
-        <div x-show="store.answerRevealed" class="notification is-info is-light mb-5">
-          <p class="is-size-4" x-text="getCurrentWordSolution()"></p>
-        </div>
+        <!-- STEP 2: Show Answer -->
+<div x-show="!store.answerRevealed" class="mb-5">
+  <button class="button is-large"
+          style="
+            min-width: 260px;
+            background-color: #0f0f0f;
+            color: #ffffff;
+            border: 1px solid #333;
+          "
+          @click="revealAnswer">
+    ${escapeHtml(t('review.card.show_answer'))}
+  </button>
+</div>
 
-        <!-- Sentence context (shown after answer revealed) -->
-        <div x-show="store.answerRevealed && hasSentenceContext()" class="notification is-info is-light mb-5">
-          <p class="is-size-4 sentence-context"
-            :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
-            x-effect="setSentenceContextHtml($el)">
-          </p>
-        </div>
+<!-- STEP 3: Answer -->
+<div x-show="store.answerRevealed" class="mb-5">
 
-        <!-- Action buttons -->
-        <div class="buttons is-centered mb-5">
-          <button x-show="!store.answerRevealed"
-                  class="button is-primary is-large"
-                  @click="revealAnswer">
-            ${escapeHtml(t('review.card.show_answer'))}
-          </button>
-        </div>
+  <div class="mb-4"
+       style="
+         background-color: #0f0f0f;
+         border: 1px solid #333;
+         border-radius: 12px;
+         padding: 16px;
+       ">
+    <p class="is-size-4 has-text-white"
+       x-text="getCurrentWordSolution()"></p>
+  </div>
 
-        <!-- After answer revealed -->
+  <div x-show="hasSentenceContext()" class="mb-4"
+       style="
+         background-color: #0f0f0f;
+         border: 1px solid #333;
+         border-radius: 12px;
+         padding: 16px;
+       ">
+    <p class="is-size-5 has-text-grey-light sentence-context"
+       :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
+       x-effect="setSentenceContextHtml($el)">
+    </p>
+  </div>
+
+</div>
+
+        <!-- STEP 4: Main Actions -->
         <div x-show="store.answerRevealed" class="mb-5">
           <div class="buttons is-centered">
-            <button class="button is-danger" @click.prevent="decrementStatus" title="Arrow Down">
-              ${escapeHtml(t('review.card.wrong'))}
+
+            <button class="button is-danger is-medium"
+                    @click.prevent="decrementStatus">
+              Didn't know
             </button>
-            <button class="button is-success" @click.prevent="incrementStatus" title="Arrow Up">
-              ${escapeHtml(t('review.card.correct'))}
+
+            <button class="button is-success is-medium"
+                    @click.prevent="incrementStatus">
+              Knew it
             </button>
-            <button class="button" @click.prevent="skipWord" title="Escape">
-              ${escapeHtml(t('review.card.skip'))}
+
+            <button class="button is-light"
+                    @click.prevent="skipWord">
+              Skip
             </button>
+
           </div>
         </div>
 
-        <!-- Status buttons -->
+        <!-- STEP 5: Rating -->
         <div x-show="store.answerRevealed" class="mb-5">
-          <p class="is-size-7 has-text-grey mb-2">${escapeHtml(t('review.card.set_status_directly'))}</p>
+          <p class="is-size-7 has-text-grey mb-2">
+            How well did you know this word?
+          </p>
+
           <div class="buttons is-centered are-small">
-${[1, 2, 3, 4, 5].map(s => `
-  <button class="button status-btn"
-          :class="getCurrentWordStatus() === ${s} ? 'status-${s}' : ''"
-          @click="setStatus(${s})">${s}</button>
-`).join('')}
-            <button class="button" @click="setStatus(98)" title="Press I">
+            ${[1, 2, 3, 4, 5].map(s => `
+              <button class="button status-btn"
+                      :class="getCurrentWordStatus() === ${s} ? 'status-${s}' : ''"
+                      @click="setStatus(${s})">
+                ${s}
+              </button>
+            `).join('')}
+
+            <button class="button" @click="setStatus(98)">
               ${escapeHtml(t('review.card.ignore'))}
             </button>
-            <button class="button" @click="setStatus(99)" title="Press W">
+
+            <button class="button" @click="setStatus(99)">
               ${escapeHtml(t('review.card.well_known'))}
             </button>
           </div>
         </div>
 
-        <!-- Details button -->
+        <!-- STEP 6: Details -->
         <div x-show="store.answerRevealed">
-          <button class="button is-text is-small" @click="store.openModal()" title="Press E">
+          <button class="button is-text is-small"
+                  @click="store.openModal()">
             ${escapeHtml(t('review.card.details_edit'))}
           </button>
         </div>
+
       </div>
     </div>
   `;
