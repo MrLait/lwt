@@ -276,37 +276,42 @@ function buildWordReviewArea(): string {
     </p>
   </div>
 
-<!-- Sentence context -->
-<div x-show="hasSentenceContext() || editingSentence" class="mb-4"
-     style="background-color: rgb(15, 15, 15); border: 1px solid rgb(51, 51, 51); border-radius: 12px; padding: 16px;">
+  <!-- Sentence context -->
+  <div x-show="hasSentenceContext() || editingSentence" class="mb-4"
+      style="position: relative; background-color: rgb(15, 15, 15); border: 1px solid rgb(51, 51, 51); border-radius: 12px; padding: 16px;">
 
-  <template x-if="editingSentence">
-    <span class="inline-edit-container">
-      <textarea class="textarea is-small sentence-edit-textarea"
-                x-model="editValue"
-                @keydown.escape="cancelSentenceEdit()"
-                @keydown.ctrl.enter="saveSentenceEdit()"
-                rows="3"></textarea>
-      <div class="buttons are-small mt-1">
-        <button type="button" class="button is-small is-success"
-                @click="saveSentenceEdit()" :disabled="editSaving">Save</button>
-        <button type="button" class="button is-small"
-                @click="cancelSentenceEdit()">Cancel</button>
-      </div>
-    </span>
-  </template>
+    <template x-if="editingSentence">
+      <span class="inline-edit-container" @click.outside="cancelSentenceEdit()">
+        <textarea class="textarea is-small sentence-edit-textarea"
+                  x-model="editValue"
+                  @keydown.escape="cancelSentenceEdit()"
+                  @keydown.ctrl.enter="saveSentenceEdit()"
+                  rows="3"></textarea>
+        <div class="buttons are-small mt-1">
+          <button type="button" class="button is-small is-success"
+                  @click="saveSentenceEdit()" :disabled="editSaving">Save</button>
+          <button type="button" class="button is-small"
+                  @click="cancelSentenceEdit()">Cancel</button>
+        </div>
+      </span>
+    </template>
 
-  <template x-if="!editingSentence">
-    <p class="is-size-5 has-text-grey-light sentence-context"
-       :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
-       x-effect="setSentenceContextHtml($el)"
-       @dblclick="startSentenceEdit()"
-       title="Double-click to edit"
-       style="cursor: pointer;">
-    </p>
-  </template>
+    <template x-if="!editingSentence">
+      <span>
+        <button @click="startSentenceEdit()"
+                class="button is-small is-ghost has-text-grey"
+                style="position: absolute; top: 8px; right: 8px;"
+                title="Edit sentence">
+          ✏️
+        </button>
+        <p class="is-size-5 has-text-grey-light sentence-context"
+          :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
+          x-effect="setSentenceContextHtml($el)">
+        </p>
+      </span>
+    </template>
 
-</div>
+  </div>
 
 
 </div>
