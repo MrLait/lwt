@@ -16,6 +16,7 @@ import { getReviewStore, initReviewStore } from '../stores/review_store';
 import { ReviewApi, type TableReviewWord } from '@modules/review/api/review_api';
 import { speechDispatcher } from '@shared/utils/user_interactions';
 import { saveSetting } from '@shared/utils/ajax_utilities';
+import { WordsApi } from '@modules/vocabulary/api/words_api';
 import { t } from '@shared/i18n/translator';
 
 /**
@@ -274,6 +275,39 @@ function buildWordReviewArea(): string {
        x-effect="setSentenceContextHtml($el)">
     </p>
   </div>
+
+<!-- Sentence context -->
+<div x-show="hasSentenceContext() || editingSentence" class="mb-4"
+     style="background-color: rgb(15, 15, 15); border: 1px solid rgb(51, 51, 51); border-radius: 12px; padding: 16px;">
+
+  <template x-if="editingSentence">
+    <span class="inline-edit-container">
+      <textarea class="textarea is-small sentence-edit-textarea"
+                x-model="editValue"
+                @keydown.escape="cancelSentenceEdit()"
+                @keydown.ctrl.enter="saveSentenceEdit()"
+                rows="3"></textarea>
+      <div class="buttons are-small mt-1">
+        <button type="button" class="button is-small is-success"
+                @click="saveSentenceEdit()" :disabled="editSaving">Save</button>
+        <button type="button" class="button is-small"
+                @click="cancelSentenceEdit()">Cancel</button>
+      </div>
+    </span>
+  </template>
+
+  <template x-if="!editingSentence">
+    <p class="is-size-5 has-text-grey-light sentence-context"
+       :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
+       x-effect="setSentenceContextHtml($el)"
+       @dblclick="startSentenceEdit()"
+       title="Double-click to edit"
+       style="cursor: pointer;">
+    </p>
+  </template>
+
+</div>
+
 
 </div>
 
@@ -690,6 +724,11 @@ function registerReviewAppComponent(config: ReviewConfig): void {
     timerDisplay: '00:00',
     timerIntervalId: null,
 
+    // Inline edit для sentence — ДОБАВИТЬ СЮДА:
+    editingSentence: false,
+    editValue: '',
+    editSaving: false,
+
     get store() {
       return getReviewStore();
     },
@@ -1058,7 +1097,48 @@ function registerReviewAppComponent(config: ReviewConfig): void {
         .replace(/\{([^}]+)\}/g, '<strong class="has-text-primary">$1</strong>')
         .replace(/[{}]/g, '');
     },
+    startSentenceEdit() {
+      if (!this.store.currentWord) return;
+      this.editValue = this.store.currentWord.sentence;
+      this.editingSentence = true;
 
+      setTimeout(() => {
+        const textarea = document.querySelector('.sentence-edit-textarea');
+        if (textarea) {
+          textarea.focus();
+          textarea.select();
+        }
+      }, 0);
+    },
+
+    async saveSentenceEdit() {
+      if (!this.store.currentWord || this.editSaving) return;
+      this.editSaving = true;
+
+      const response = await WordsApi.inlineEdit(
+        this.store.currentWord.wordId,
+        'sentence',
+        this.editValue
+      );
+
+      if (response.data?.success) {
+        this.store.currentWord = {
+          ...this.store.currentWord,
+          sentence: response.data.value
+        };
+        this.editingSentence = false;
+      } else {
+        alert(response.data?.error || 'Failed to save');
+      }
+
+      this.editValue = '';
+      this.editSaving = false;
+    },
+
+    cancelSentenceEdit() {
+      this.editingSentence = false;
+      this.editValue = '';
+    },
 
   }));
 }

@@ -246,7 +246,7 @@ export const WordsApi = {
    */
   async inlineEdit(
     termId: number,
-    field: 'translation' | 'romanization',
+    field: 'translation' | 'romanization' | 'sentence',
     value: string
   ): Promise<ApiResponse<InlineEditResponse>> {
     return apiPut<InlineEditResponse>(`/terms/${termId}/inline-edit`, { field, value });

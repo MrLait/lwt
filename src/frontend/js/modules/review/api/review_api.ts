@@ -155,6 +155,16 @@ export const ReviewApi = {
     });
   },
 
+  async updateWordSentence(
+    wordId: number,
+    sentence: string
+  ): Promise<ApiResponse<{ success: boolean }>> {
+    return apiPut<{ success: boolean }>('/vocabulary/sentence', {
+      word_id: wordId,
+      sentence
+    });
+  },
+
   /**
    * Update word status during review.
    *

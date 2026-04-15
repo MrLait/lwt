@@ -37,7 +37,7 @@ interface PageConfig {
  */
 interface EditingState {
   id: number;
-  field: 'translation' | 'romanization';
+  field: 'translation' | 'romanization' | 'sentence';
 }
 
 /**

@@ -350,7 +350,7 @@ class WordListApiHandler
     public function inlineEdit(int $termId, string $field, string $value): array
     {
         // Validate field
-        if (!in_array($field, ['translation', 'romanization'])) {
+        if (!in_array($field, ['translation', 'romanization', 'sentence'])) {
             return ['success' => false, 'value' => '', 'error' => 'Invalid field'];
         }
 
@@ -375,15 +375,18 @@ class WordListApiHandler
             QueryBuilder::table('words')
                 ->where('WoID', '=', $termId)
                 ->updatePrepared(['WoTranslation' => $value]);
-        } else {
-            // romanization
-            if ($value === '') {
-                $displayValue = '*';
-            }
-            QueryBuilder::table('words')
-                ->where('WoID', '=', $termId)
-                ->updatePrepared(['WoRomanization' => $value]);
+    } elseif ($field === 'romanization') {
+        if ($value === '') {
+            $displayValue = '*';
         }
+        QueryBuilder::table('words')
+            ->where('WoID', '=', $termId)
+            ->updatePrepared(['WoRomanization' => $value]);
+    } elseif ($field === 'sentence') {
+        QueryBuilder::table('words')
+            ->where('WoID', '=', $termId)
+            ->updatePrepared(['WoSentence' => $value]);
+    }
 
         return ['success' => true, 'value' => $displayValue];
     }
