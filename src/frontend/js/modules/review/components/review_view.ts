@@ -803,7 +803,11 @@ function registerReviewAppComponent(config: ReviewConfig): void {
     },
 
     async incrementStatus() {
-      await this.store.incrementStatus();
+      if (this.store.currentWord?.status === 5) {
+        await this.store.updateStatus(99, true);
+      } else {
+        await this.store.incrementStatus();
+      }
     },
 
     async decrementStatus() {
