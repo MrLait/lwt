@@ -263,19 +263,6 @@ function buildWordReviewArea(): string {
        x-text="getCurrentWordSolution()"></p>
   </div>
 
-  <div x-show="hasSentenceContext()" class="mb-4"
-       style="
-         background-color: #0f0f0f;
-         border: 1px solid #333;
-         border-radius: 12px;
-         padding: 16px;
-       ">
-    <p class="is-size-5 has-text-grey-light sentence-context"
-       :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
-       x-effect="setSentenceContextHtml($el)">
-    </p>
-  </div>
-
   <!-- Sentence context -->
   <div x-show="hasSentenceContext() || editingSentence" class="mb-4"
       style="position: relative; background-color: rgb(15, 15, 15); border: 1px solid rgb(51, 51, 51); border-radius: 12px; padding: 16px;">
@@ -298,16 +285,18 @@ function buildWordReviewArea(): string {
 
     <template x-if="!editingSentence">
       <span>
-        <button @click="startSentenceEdit()"
-                class="button is-small is-ghost has-text-grey"
-                style="position: absolute; top: 8px; right: 8px;"
-                title="Edit sentence">
-          ✏️
-        </button>
-        <p class="is-size-5 has-text-grey-light sentence-context"
-          :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
-          x-effect="setSentenceContextHtml($el)">
-        </p>
+          <button @click="startSentenceEdit();"
+                  class="button is-small is-ghost has-text-grey"
+                  style="position: absolute; top: 1px; right: 1px;"
+                  title="Edit sentence">
+            ✏️
+          </button>
+
+          <p class="is-size-5 has-text-grey-light sentence-context"
+            :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
+            x-effect="setSentenceContextHtml($el)"
+            style="user-select: text;">
+          </p>
       </span>
     </template>
 
@@ -1102,6 +1091,7 @@ function registerReviewAppComponent(config: ReviewConfig): void {
         .replace(/\{([^}]+)\}/g, '<strong class="has-text-primary">$1</strong>')
         .replace(/[{}]/g, '');
     },
+
     startSentenceEdit() {
       if (!this.store.currentWord) return;
       this.editValue = this.store.currentWord.sentence;
@@ -1111,7 +1101,10 @@ function registerReviewAppComponent(config: ReviewConfig): void {
         const textarea = document.querySelector('.sentence-edit-textarea');
         if (textarea) {
           textarea.focus();
-          textarea.select();
+
+          // Убираем textarea.select() и вместо него ставим курсор в конец текста
+          const length = textarea.value.length;
+          textarea.setSelectionRange(length, length);
         }
       }, 0);
     },
