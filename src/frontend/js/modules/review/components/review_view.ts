@@ -302,6 +302,14 @@ function buildWordReviewArea(): string {
 
   </div>
 
+<!-- Add sentence button (shown when no sentence) -->
+<div x-show="store.answerRevealed && store.currentWord && !hasSentenceContext() && !editingSentence" class="mb-4">
+  <button @click="startSentenceEdit()"
+          class="button is-small is-ghost has-text-grey">
+    ➕ Add sentence
+  </button>
+</div>
+
 
 </div>
 
