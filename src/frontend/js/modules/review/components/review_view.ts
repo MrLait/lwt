@@ -848,6 +848,8 @@ function registerReviewAppComponent(config: ReviewConfig): void {
 
     handleKeydown(e) {  // Убрали ": KeyboardEvent"
       if (this.store.isModalOpen) return;
+      // Пока редактируется предложение — не перехватываем хоткеи ревью
+      if (this.editingSentence) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (this.store.isTableMode || this.store.isFinished) return;
 

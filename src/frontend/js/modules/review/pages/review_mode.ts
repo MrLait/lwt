@@ -67,6 +67,22 @@ export function handleReviewWordClick(this: HTMLElement): boolean {
  * @returns true if nothing was done, false otherwise
  */
 export function handleReviewKeydown(e: KeyboardEvent): boolean {
+  // Когда открыт любой инпут/textarea (в т.ч. inline-редактор предложения в новом review UI),
+  // глобальные хоткеи ревью не должны срабатывать.
+  const target = e.target as HTMLElement | null;
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target?.isContentEditable
+  ) {
+    return true;
+  }
+  // Inline-редактирование предложения в `review_view.ts` рендерит textarea только во время редактирования (x-if).
+  // Этот обработчик использует `e.which`, поэтому срабатывает даже на русской раскладке — гасим его, если редактор открыт.
+  if (document.querySelector('.sentence-edit-textarea')) {
+    return true;
+  }
+
   const wordEl = document.querySelector('.word') as HTMLElement | null;
   const wordId = getCurrentWordId();
 
