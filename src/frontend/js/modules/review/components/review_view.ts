@@ -252,15 +252,38 @@ function buildWordReviewArea(): string {
 <!-- STEP 3: Answer -->
 <div x-show="store.answerRevealed" class="mb-5">
 
+  <!-- Answer (inline edit) -->
   <div class="mb-4"
-       style="
-         background-color: #0f0f0f;
-         border: 1px solid #333;
-         border-radius: 12px;
-         padding: 16px;
-       ">
-    <p class="is-size-4 has-text-white"
-       x-text="getCurrentWordSolution()"></p>
+       style="position: relative; background-color: #0f0f0f; border: 1px solid #333; border-radius: 12px; padding: 16px;">
+
+    <template x-if="editingSolution">
+      <span class="inline-edit-container" @click.outside="cancelSolutionEdit()">
+        <textarea class="textarea is-small solution-edit-textarea"
+                  x-model="solutionEditValue"
+                  @keydown.escape="cancelSolutionEdit()"
+                  @keydown.ctrl.enter="saveSolutionEdit()"
+                  rows="3"></textarea>
+        <div class="buttons are-small mt-1">
+          <button type="button" class="button is-small is-success"
+                  @click="saveSolutionEdit()" :disabled="solutionEditSaving">Save</button>
+          <button type="button" class="button is-small"
+                  @click="cancelSolutionEdit()">Cancel</button>
+        </div>
+      </span>
+    </template>
+
+    <template x-if="!editingSolution">
+      <span>
+        <button @click="startSolutionEdit();"
+                class="button is-small is-ghost has-text-grey"
+                style="position: absolute; top: 1px; right: 1px;"
+                title="Edit answer">
+          ✏️
+        </button>
+
+        <p class="is-size-4 has-text-white" x-text="getCurrentWordSolution()"></p>
+      </span>
+    </template>
   </div>
 
   <!-- Sentence context -->
@@ -731,6 +754,11 @@ function registerReviewAppComponent(config: ReviewConfig): void {
     editValue: '',
     editSaving: false,
 
+    // Inline edit для answer (solution)
+    editingSolution: false,
+    solutionEditValue: '',
+    solutionEditSaving: false,
+
     get store() {
       return getReviewStore();
     },
@@ -850,6 +878,8 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       if (this.store.isModalOpen) return;
       // Пока редактируется предложение — не перехватываем хоткеи ревью
       if (this.editingSentence) return;
+      // Пока редактируется answer — не перехватываем хоткеи ревью
+      if (this.editingSolution) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (this.store.isTableMode || this.store.isFinished) return;
 
@@ -1145,6 +1175,50 @@ function registerReviewAppComponent(config: ReviewConfig): void {
     cancelSentenceEdit() {
       this.editingSentence = false;
       this.editValue = '';
+    },
+
+    startSolutionEdit() {
+      if (!this.store.currentWord) return;
+      this.solutionEditValue = this.store.currentWord.solution;
+      this.editingSolution = true;
+
+      setTimeout(() => {
+        const textarea = document.querySelector('.solution-edit-textarea') as HTMLTextAreaElement | null;
+        if (textarea) {
+          textarea.focus();
+          const length = textarea.value.length;
+          textarea.setSelectionRange(length, length);
+        }
+      }, 0);
+    },
+
+    async saveSolutionEdit() {
+      if (!this.store.currentWord || this.solutionEditSaving) return;
+      this.solutionEditSaving = true;
+
+      const response = await WordsApi.inlineEdit(
+        this.store.currentWord.wordId,
+        'translation',
+        this.solutionEditValue
+      );
+
+      if (response.data?.success) {
+        this.store.currentWord = {
+          ...this.store.currentWord,
+          solution: response.data.value
+        };
+        this.editingSolution = false;
+      } else {
+        alert(response.data?.error || 'Failed to save');
+      }
+
+      this.solutionEditValue = '';
+      this.solutionEditSaving = false;
+    },
+
+    cancelSolutionEdit() {
+      this.editingSolution = false;
+      this.solutionEditValue = '';
     },
 
   }));

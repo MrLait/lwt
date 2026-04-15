@@ -82,6 +82,9 @@ export function handleReviewKeydown(e: KeyboardEvent): boolean {
   if (document.querySelector('.sentence-edit-textarea')) {
     return true;
   }
+  if (document.querySelector('.solution-edit-textarea')) {
+    return true;
+  }
 
   const wordEl = document.querySelector('.word') as HTMLElement | null;
   const wordId = getCurrentWordId();
