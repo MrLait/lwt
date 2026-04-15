@@ -797,9 +797,6 @@ function registerReviewAppComponent(config: ReviewConfig): void {
 
     revealAnswer() {
       this.store.revealAnswer();
-      // if (this.store.readAloudEnabled && this.store.currentWord) {
-      //   this.speakWord();
-      // }
     },
 
     async incrementStatus() {
@@ -1046,22 +1043,20 @@ function registerReviewAppComponent(config: ReviewConfig): void {
       const sentence = this.store.currentWord.sentence;
 
       if (reviewType === 4) {
-        // Term → Translation: показываем предложение с выделенным словом
         if (sentence) {
-          el.innerHTML = sentence
-            .replace(
-              new RegExp('\\{(' + this.escapeRegex(wordText) + ')\\}', 'gi'),
-              '<strong class="has-text-primary">$1</strong>'
-            )
-            .replace(/[{}]/g, '');
+          // Убираем фигурные скобки
+          const clean = sentence.replace(/[{}]/g, '');
+          // Подсвечиваем ВСЕ вхождения слова
+          el.innerHTML = clean.replace(
+            new RegExp('(' + this.escapeRegex(wordText) + ')', 'gi'),
+            '<strong class="has-text-primary">$1</strong>'
+          );
         } else {
           el.innerHTML = '';
         }
       } else if (reviewType === 5) {
-        // Translation → Term: показываем само слово
         el.innerHTML = '<span class="word-test">' + this.escapeHtmlText(wordText) + '</span>';
       } else {
-        // Типы 1,2,3: показываем само слово
         el.innerHTML = '<span class="word-test">' + this.escapeHtmlText(wordText) + '</span>';
       }
     },
