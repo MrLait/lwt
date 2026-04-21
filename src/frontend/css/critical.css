@@ -29,6 +29,12 @@ body {
   min-height: 100vh;
 }
 
+/* Respect explicit dark theme immediately to prevent "light flash" before main CSS loads */
+:root[data-theme="dark"] body {
+  color: #eeeeee;
+  background-color: #000;
+}
+
 /* Container */
 .container {
   max-width: 900px;
@@ -43,6 +49,10 @@ body {
   position: relative;
   display: flex;
   align-items: stretch;
+}
+
+:root[data-theme="dark"] .navbar {
+  background-color: #0b0b0b;
 }
 
 .navbar-brand {
@@ -107,6 +117,11 @@ body {
   background-color: #fff;
   border-radius: 0.25rem;
   box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
+}
+
+:root[data-theme="dark"] .card {
+  background-color: #111;
+  box-shadow: 0 0.5em 1em -0.125em rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .card-header {
@@ -194,6 +209,11 @@ body {
   border-radius: 6px;
   box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
   padding: 1.25rem;
+}
+
+:root[data-theme="dark"] .box {
+  background-color: #111;
+  box-shadow: 0 0.5em 1em -0.125em rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 /* Notification */

@@ -39,8 +39,6 @@ use Lwt\Shared\Infrastructure\Utilities\StringUtils;
 */
 
 ?>
-<link rel="stylesheet" type="text/css" href="<?php StringUtils::printFilePath('css/css_charts.css');?>" />
-
 <?php \Lwt\Shared\UI\Helpers\PageLayoutHelper::renderMessage($message, false); ?>
 
 <?php

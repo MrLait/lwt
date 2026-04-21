@@ -18,6 +18,7 @@ import 'bulma/css/bulma.min.css';
 import '../css/base/styles.css';
 import '../css/base/html5_audio_player.css';
 import '../css/base/icons.css';
+import '../css/base/css_charts.css';
 
 // =============================================================================
 // SHARED INFRASTRUCTURE (always loaded)
@@ -77,6 +78,102 @@ import '@shared/forms/form_initialization';
 document.querySelectorAll<HTMLLinkElement>('link[data-async-css]').forEach((link) => {
   link.media = 'all';
 });
+
+// =============================================================================
+// GLOBAL PAGE LOADER (CSP-compliant, no inline JS)
+// =============================================================================
+
+function getPageLoaderEl(): HTMLElement | null {
+  return document.getElementById('lwt-page-loader');
+}
+
+function showPageLoader(): void {
+  const el = getPageLoaderEl();
+  if (!el) return;
+  el.setAttribute('data-active', 'true');
+}
+
+function hidePageLoader(): void {
+  const el = getPageLoaderEl();
+  if (!el) return;
+  el.setAttribute('data-active', 'false');
+}
+
+function isModifiedClick(e: MouseEvent): boolean {
+  return e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
+}
+
+function isSafeNavigationHref(href: string): boolean {
+  if (!href) return false;
+  const lower = href.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('mailto:') || lower.startsWith('tel:')) return false;
+  return true;
+}
+
+function isSamePageHashNavigation(nextHref: string): boolean {
+  try {
+    const current = new URL(window.location.href);
+    const next = new URL(nextHref, window.location.href);
+    return (
+      next.origin === current.origin &&
+      next.pathname === current.pathname &&
+      next.search === current.search &&
+      next.hash.length > 1
+    );
+  } catch {
+    return false;
+  }
+}
+
+// First paint: loader starts active in HTML; ensure it's visible while JS/CSS settle.
+showPageLoader();
+
+// Hide when page is ready (also handles BFCache restores).
+window.addEventListener('pageshow', hidePageLoader);
+window.addEventListener('load', hidePageLoader);
+
+// Show on link navigations (internal only).
+document.addEventListener(
+  'click',
+  (e) => {
+    const target = e.target as HTMLElement | null;
+    const a = target?.closest?.('a') as HTMLAnchorElement | null;
+    if (!a) return;
+    if (a.hasAttribute('download')) return;
+    if (a.target === '_blank') return;
+    if (a.dataset?.noLoader === 'true') return;
+    if (isModifiedClick(e as MouseEvent)) return;
+
+    const href = a.getAttribute('href') ?? '';
+    if (!isSafeNavigationHref(href)) return;
+    if (isSamePageHashNavigation(href)) return;
+
+    try {
+      const u = new URL(href, window.location.href);
+      if (u.origin !== window.location.origin) return;
+    } catch {
+      // if we can't parse it, don't block loader; just show it for non-empty href
+    }
+
+    showPageLoader();
+  },
+  true
+);
+
+// Show on form submits.
+document.addEventListener(
+  'submit',
+  (e) => {
+    const form = e.target as HTMLFormElement | null;
+    if (!form) return;
+    if (form.dataset?.noLoader === 'true') return;
+    showPageLoader();
+  },
+  true
+);
+
+// Programmatic navigations.
+window.addEventListener('beforeunload', showPageLoader);
 
 // =============================================================================
 // DYNAMIC MODULE LOADING + ALPINE.JS INITIALIZATION

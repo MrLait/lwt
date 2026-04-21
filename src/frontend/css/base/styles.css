@@ -8,6 +8,84 @@
   display: none !important;
 }
 
+/* ==========================================================================
+   Global page loader (CSP-safe, controlled by external JS)
+   ========================================================================== */
+
+#lwt-page-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+html[data-theme="dark"] #lwt-page-loader {
+  background: rgba(16, 18, 24, 0.72);
+}
+
+#lwt-page-loader[data-active="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#lwt-page-loader .lwt-loader-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="dark"] #lwt-page-loader .lwt-loader-box {
+  background: rgba(20, 22, 28, 0.92);
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+#lwt-page-loader .lwt-loader-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 3px solid rgba(0, 0, 0, 0.15);
+  border-top-color: rgba(50, 115, 220, 0.95);
+  animation: lwtSpin 0.9s linear infinite;
+}
+
+html[data-theme="dark"] #lwt-page-loader .lwt-loader-spinner {
+  border-color: rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(72, 95, 199, 0.95);
+}
+
+#lwt-page-loader .lwt-loader-text {
+  font-size: 0.95rem;
+  color: rgba(0, 0, 0, 0.70);
+  font-weight: 600;
+}
+
+html[data-theme="dark"] #lwt-page-loader .lwt-loader-text {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+@keyframes lwtSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #lwt-page-loader { transition: none; }
+  #lwt-page-loader .lwt-loader-spinner { animation: none; }
+}
+
 /* Screen reader only - visually hidden but accessible to assistive technology */
 .sr-only {
   position: absolute;

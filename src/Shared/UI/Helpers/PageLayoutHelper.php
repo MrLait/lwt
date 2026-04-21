@@ -39,6 +39,23 @@ use Lwt\Modules\User\Application\UserFacade;
 class PageLayoutHelper
 {
     /**
+     * Build the loader HTML element (placed right after <body>).
+     *
+     * @return string
+     */
+    private static function buildPageLoaderBody(): string
+    {
+        return <<<'HTML'
+<div id="lwt-page-loader" data-active="true" aria-hidden="true">
+  <div class="lwt-loader-box" role="status" aria-live="polite">
+    <div class="lwt-loader-spinner" aria-hidden="true"></div>
+    <div class="lwt-loader-text">Loading…</div>
+  </div>
+</div>
+HTML;
+    }
+
+    /**
      * Build the data-theme attribute for the <html> element.
      *
      * When a user has explicitly selected a theme (not auto-detect),
@@ -718,6 +735,7 @@ HTML;
         echo '<title>LWT :: ' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</title>';
         echo '</head>';
         echo '<body>';
+        echo self::buildPageLoaderBody();
 
         flush();
     }
@@ -789,6 +807,7 @@ HTML;
             ? ' class="' . htmlspecialchars($bodyClass, ENT_QUOTES, 'UTF-8') . '"'
             : '';
         echo '<body' . $bodyAttr . '>';
+        echo self::buildPageLoaderBody();
         echo '<a href="#main-content" class="sr-only sr-only-focusable" '
             . 'style="position:absolute;z-index:10000;background:#485fc7;color:#fff;padding:0.5rem 1rem;">'
             . 'Skip to main content</a>';
