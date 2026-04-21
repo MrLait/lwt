@@ -49,6 +49,7 @@ assert(is_string($similarTermsRow));
 assert(is_string($dictLinksHtml));
 assert(is_string($sentenceAreaHtml));
 assert(is_string($wordTagsHtml));
+assert(is_string($returnTo));
 
 $phLemmaEx = htmlspecialchars(__('vocabulary.form.placeholder_lemma_example'), ENT_QUOTES, 'UTF-8');
 $valChange = htmlspecialchars(__('vocabulary.common.change'), ENT_QUOTES, 'UTF-8');
@@ -61,6 +62,7 @@ data-lwt-form-check="true" data-lwt-clear-frame="true">
 <input type="hidden" name="WoID" value="<?php echo $wid; ?>" />
 <input type="hidden" name="WoOldStatus" value="<?php echo $status; ?>" />
 <input type="hidden" name="WoTextLC" value="<?php echo htmlspecialchars($termlc, ENT_QUOTES, 'UTF-8'); ?>" />
+<input type="hidden" name="returnTo" value="<?php echo htmlspecialchars($returnTo, ENT_QUOTES, 'UTF-8'); ?>" />
 <table class="table is-bordered is-fullwidth">
     <tr title="<?= htmlspecialchars(__('vocabulary.form.uppercase_only_hint'), ENT_QUOTES, 'UTF-8') ?>">
         <td class="has-text-right"><b><?= __('vocabulary.form.edit_term') ?>:</b></td>

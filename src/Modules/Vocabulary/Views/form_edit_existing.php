@@ -53,6 +53,7 @@ assert(is_string($similarTermsRow));
 assert(is_string($dictLinksHtml));
 assert(is_string($sentenceAreaHtml));
 assert(is_string($wordTagsHtml));
+assert(is_string($returnTo));
 
 $phLemmaEx = htmlspecialchars(__('vocabulary.form.placeholder_lemma_example'), ENT_QUOTES, 'UTF-8');
 $valChange = htmlspecialchars(__('vocabulary.common.change'), ENT_QUOTES, 'UTF-8');
@@ -66,6 +67,7 @@ data-lwt-form-check="true" data-lwt-clear-frame="true">
 <input type="hidden" name="WoID" value="<?php echo $wid; ?>" />
 <input type="hidden" name="WoOldStatus" value="<?php echo $wordData['WoStatus']; ?>" />
 <input type="hidden" name="WoTextLC" value="<?php echo htmlspecialchars($termlc, ENT_QUOTES, 'UTF-8'); ?>" />
+<input type="hidden" name="returnTo" value="<?php echo htmlspecialchars($returnTo, ENT_QUOTES, 'UTF-8'); ?>" />
 <input type="hidden" name="tid" value="<?php echo InputValidator::getString('tid'); ?>" />
 <input type="hidden" name="ord" value="<?php echo InputValidator::getString('ord'); ?>" />
 <table class="table is-bordered is-fullwidth">

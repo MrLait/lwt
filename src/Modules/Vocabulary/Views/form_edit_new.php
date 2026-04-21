@@ -49,6 +49,7 @@ assert(is_string($similarTermsRow));
 assert(is_string($dictLinksHtml));
 assert(is_string($sentenceAreaHtml));
 assert(is_string($wordTagsHtml));
+assert(is_string($returnTo));
 
 $valSave = htmlspecialchars(__('vocabulary.common.save'), ENT_QUOTES, 'UTF-8');
 
@@ -66,6 +67,7 @@ data-lwt-form-check="true" data-lwt-clear-frame="true">
 <input type="hidden" name="fromAnn" value="<?php echo $fromAnn; ?>" />
 <input type="hidden" name="WoLgID" id="langfield" value="<?php echo $lang; ?>" />
 <input type="hidden" name="WoTextLC" value="<?php echo htmlspecialchars($termlc, ENT_QUOTES, 'UTF-8'); ?>" />
+<input type="hidden" name="returnTo" value="<?php echo htmlspecialchars($returnTo, ENT_QUOTES, 'UTF-8'); ?>" />
 <input type="hidden" name="tid" value="<?php echo $textId; ?>" />
 <input type="hidden" name="ord" value="<?php echo $ord; ?>" />
 <table class="table is-bordered is-fullwidth">

@@ -187,9 +187,6 @@ class TermEditController extends VocabularyBaseController
             $titletext = "Edit Term: " . htmlspecialchars($textlc, ENT_QUOTES, 'UTF-8');
         }
 
-        PageLayoutHelper::renderPageStartNobody($titletext);
-        echo '<h1>' . $titletext . '</h1>';
-
         $wid = $result['id'];
         $message = $result['message'];
 
@@ -203,6 +200,18 @@ class TermEditController extends VocabularyBaseController
 
         $tagList = TagsFacade::getWordTagList($wid, false);
         $todoContent = $this->getTextStatisticsService()->getTodoWordsContent($textId);
+
+        // After successful save/update, redirect back to the page that opened the editor (PRG pattern).
+        // We only do it in normal (non-annotation) mode.
+        if ($fromAnn === '') {
+            $returnTo = InputValidator::getString('returnTo', '');
+            $target = $this->resolveSafeReturnTo($returnTo) ?: '/words';
+            RedirectResponse::seeOther($target)->send();
+            exit;
+        }
+
+        PageLayoutHelper::renderPageStartNobody($titletext);
+        echo '<h1>' . $titletext . '</h1>';
 
         $this->render('edit_result', [
             'wid' => $wid,
@@ -225,6 +234,49 @@ class TermEditController extends VocabularyBaseController
     }
 
     /**
+     * Resolve a safe "return to" URL for redirects.
+     *
+     * Accepts either an absolute URL pointing to the current host, or a relative URL starting with "/".
+     * Returns empty string if the value is not safe.
+     *
+     * @param string $candidate Raw return URL
+     *
+     * @return string Safe relative URL (path + query) or empty string
+     */
+    private function resolveSafeReturnTo(string $candidate): string
+    {
+        $candidate = trim($candidate);
+        if ($candidate === '') {
+            return '';
+        }
+
+        // Allow relative URLs within this app.
+        if (str_starts_with($candidate, '/')) {
+            return $candidate;
+        }
+
+        // Allow absolute URLs only for the same host.
+        $parts = parse_url($candidate);
+        if ($parts === false) {
+            return '';
+        }
+
+        $host = $parts['host'] ?? '';
+        $currentHost = $_SERVER['HTTP_HOST'] ?? '';
+        if ($host === '' || $currentHost === '' || strcasecmp($host, $currentHost) !== 0) {
+            return '';
+        }
+
+        $path = $parts['path'] ?? '';
+        if ($path === '' || !str_starts_with($path, '/')) {
+            return '';
+        }
+
+        $query = $parts['query'] ?? '';
+        return $query !== '' ? ($path . '?' . $query) : $path;
+    }
+
+    /**
      * Display the word edit form (new or existing).
      *
      * @param int    $wid     Word ID (-1 for new)
@@ -239,6 +291,7 @@ class TermEditController extends VocabularyBaseController
         $crudService = $this->getCrudService();
         $contextService = $this->getContextService();
         $linkingService = $this->getLinkingService();
+        $returnTo = $_SERVER['HTTP_REFERER'] ?? '';
 
         if ($wid == -1) {
             // Get the term from text items
@@ -313,6 +366,7 @@ class TermEditController extends VocabularyBaseController
                 'textId' => $textId,
                 'ord' => $ord,
                 'fromAnn' => $fromAnn,
+                'returnTo' => $returnTo,
                 'similarTermsRow' => $similarTermsRow,
                 'dictLinksHtml' => $dictLinksHtml,
                 'sentenceAreaHtml' => $sentenceAreaHtml,
@@ -383,6 +437,7 @@ class TermEditController extends VocabularyBaseController
                 'textId' => $textId,
                 'ord' => $ord,
                 'fromAnn' => $fromAnn,
+                'returnTo' => $returnTo,
                 'similarTermsRow' => $similarTermsRow,
                 'dictLinksHtml' => $dictLinksHtml,
                 'sentenceAreaHtml' => $sentenceAreaHtml,
@@ -576,6 +631,7 @@ class TermEditController extends VocabularyBaseController
         $titletext = "Edit Term: " . htmlspecialchars($term, ENT_QUOTES, 'UTF-8');
         PageLayoutHelper::renderPageStartNobody($titletext);
         $scrdir = $this->languageFacade->getScriptDirectionTag($lang);
+        $returnTo = $_SERVER['HTTP_REFERER'] ?? '';
 
         $similarTermsRow = (new \Lwt\Modules\Vocabulary\Application\UseCases\FindSimilarTerms())->getTableRow();
         $dictLinksHtml = $this->dictionaryAdapter->createDictLinksInEditWin(
@@ -605,6 +661,7 @@ class TermEditController extends VocabularyBaseController
             'status' => $status,
             'showRoman' => $showRoman,
             'scrdir' => $scrdir,
+            'returnTo' => $returnTo,
             'similarTermsRow' => $similarTermsRow,
             'dictLinksHtml' => $dictLinksHtml,
             'sentenceAreaHtml' => $sentenceAreaHtml,
