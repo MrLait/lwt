@@ -183,7 +183,7 @@ class TermEditController extends VocabularyBaseController
             // Update existing term
             $result = $this->getCrudService()->update(InputValidator::getInt('WoID', 0) ?? 0, $requestData);
             $hex = null;
-            $oldStatus = InputValidator::getString('WoOldStatus');
+            $oldStatus = InputValidator::getInt('WoOldStatus', 0) ?? 0;
             $titletext = "Edit Term: " . htmlspecialchars($textlc, ENT_QUOTES, 'UTF-8');
         }
 
