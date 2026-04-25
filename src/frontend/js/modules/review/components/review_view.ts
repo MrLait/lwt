@@ -315,10 +315,9 @@ function buildWordReviewArea(): string {
             ✏️
           </button>
 
-          <p class="is-size-5 has-text-grey-light sentence-context"
-            :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr')"
-            x-effect="setSentenceContextHtml($el)"
-            style="user-select: text;">
+          <p class="is-size-5 has-text-grey-light sentence-context has-text-left"
+            :style="'direction: ' + (store.langSettings.rtl ? 'rtl' : 'ltr') + '; user-select: text;'"
+            x-effect="setSentenceContextHtml($el)">
           </p>
       </span>
     </template>
@@ -1078,10 +1077,21 @@ function registerReviewAppComponent(config: ReviewConfig): void {
         if (sentence) {
           // Убираем фигурные скобки
           const clean = sentence.replace(/[{}]/g, '');
+
+          // Экранируем HTML, чтобы безопасно вставлять через innerHTML
+          const safeClean = this.escapeHtmlText(clean);
+          const safeWordText = this.escapeHtmlText(wordText);
+
           // Подсвечиваем ВСЕ вхождения слова
-          el.innerHTML = clean.replace(
-            new RegExp('(' + this.escapeRegex(wordText) + ')', 'gi'),
+          const highlighted = safeClean.replace(
+            new RegExp('(' + this.escapeRegex(safeWordText) + ')', 'gi'),
             '<strong class="has-text-primary">$1</strong>'
+          );
+
+          // Добавляем переносы строк после конца предложения
+          el.innerHTML = highlighted.replace(
+            /([.!?]+["'”’)\]]*)\s+/g,
+            '$1<br><br>'
           );
         } else {
           el.innerHTML = '';
