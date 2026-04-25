@@ -259,10 +259,12 @@ function buildWordReviewArea(): string {
     <template x-if="editingSolution">
       <span class="inline-edit-container" @click.outside="cancelSolutionEdit()">
         <textarea class="textarea is-small solution-edit-textarea"
-                  x-model="solutionEditValue"
-                  @keydown.escape="cancelSolutionEdit()"
-                  @keydown.ctrl.enter="saveSolutionEdit()"
-                  rows="3"></textarea>
+          x-model="solutionEditValue"
+          @keydown.escape="cancelSolutionEdit()"
+          @keydown.enter="if (!$event.shiftKey && !$event.isComposing) { $event.preventDefault(); saveSolutionEdit(); }"
+          rows="3">
+        </textarea>
+
         <div class="buttons are-small mt-1">
           <button type="button" class="button is-small is-success"
                   @click="saveSolutionEdit()" :disabled="solutionEditSaving">Save</button>
@@ -292,11 +294,13 @@ function buildWordReviewArea(): string {
 
     <template x-if="editingSentence">
       <span class="inline-edit-container" @click.outside="cancelSentenceEdit()">
-        <textarea class="textarea is-small sentence-edit-textarea"
-                  x-model="editValue"
-                  @keydown.escape="cancelSentenceEdit()"
-                  @keydown.ctrl.enter="saveSentenceEdit()"
-                  rows="3"></textarea>
+          <textarea class="textarea is-small sentence-edit-textarea"
+            x-model="editValue"
+            @keydown.escape="cancelSentenceEdit()"
+            @keydown.enter="if (!$event.shiftKey && !$event.isComposing) { $event.preventDefault(); saveSentenceEdit(); }"
+            rows="3">
+          </textarea>
+          
         <div class="buttons are-small mt-1">
           <button type="button" class="button is-small is-success"
                   @click="saveSentenceEdit()" :disabled="editSaving">Save</button>
